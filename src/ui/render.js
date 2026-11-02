@@ -1,25 +1,17 @@
-// Renders the Strategic Briefing Dashboard (DESIGN.md §7) from game state.
+// HUD, dock and the Throne Room (the Strategic Briefing Dashboard, DESIGN.md §7).
 import { currentEvent, optionsFor, briefText } from '../engine/game.js';
 import { BLOCS, BLOC_LABELS, BLOC_ICONS, FLOOD_BANDS, SEASON_MEANING } from '../engine/constants.js';
 import { monthlyBurnBreakdown, monthlyBurn, reserveMonths, surplusGrain } from '../engine/economy.js';
 import { cubitsLabel } from '../engine/flood.js';
-import {
-  approval,
-  maatState,
-  heir,
-  wife,
-  courtWives,
-  livingSons,
-  rivalClaimant,
-  mostDangerousWife,
-  seasonName,
-} from '../engine/realm.js';
+import { totalMen, avgMorale } from '../engine/army.js';
+import { approval, maatState, heir, wife, rivalClaimant, mostDangerousWife, seasonName, livingSons } from '../engine/realm.js';
 import { fmt, resolve } from '../engine/util.js';
 import { demands } from '../content/demands.js';
+import { portrait } from './portraits.js';
 
 // ── helpers ──────────────────────────────────────────────────────────────
 
-const esc = (s) =>
+export const esc = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 /** Escape, then apply **bold** and *italic*. */
@@ -28,14 +20,14 @@ export const md = (s) =>
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>');
 
-const k = (n) => (n >= 1000 ? `${fmt(n / 1000)}k` : fmt(n));
+export const k = (n) => (Math.abs(n) >= 1000 ? `${fmt(n / 1000)}k` : fmt(n));
 
-function meter(value, { tone = 'auto', label = '' } = {}) {
+export function meter(value, { tone = 'auto', label = '' } = {}) {
   const t = tone === 'auto' ? (value >= 60 ? 'good' : value >= 35 ? 'warn' : 'bad') : tone;
   return `<span class="meter meter--${t}" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(value)}" aria-label="${esc(label)}"><span style="width:${Math.max(2, Math.min(100, value))}%"></span></span>`;
 }
 
-const chipHtml = (c) => {
+export const chipHtml = (c) => {
   const cls = c.delta > 0 ? 'up' : c.delta < 0 ? 'down' : 'flat';
   const sign = c.delta > 0 ? '+' : c.delta < 0 ? '−' : '±';
   const v = Math.abs(c.delta);
@@ -43,11 +35,58 @@ const chipHtml = (c) => {
   return `<span class="chip chip--${cls}">${esc(c.label)} ${sign}${num}${esc(c.unit)}</span>`;
 };
 
-// ── header ───────────────────────────────────────────────────────────────
+// ── HUD & dock ───────────────────────────────────────────────────────────
 
-export function renderDate(state) {
+export const DESKS = [
+  ['throne', '👑', 'Throne Room'],
+  ['granary', '🌾', 'Granaries'],
+  ['army', '⚔️', 'Army'],
+  ['family', '🪷', 'Royal Family'],
+  ['court', '🏛️', 'Court'],
+  ['nomes', '🗺️', 'Two Lands'],
+  ['foreign', '🌍', 'Foreign Courts'],
+  ['monuments', '🧱', 'Monuments'],
+  ['chronicle', '📜', 'Chronicle'],
+];
+
+export function renderHud(state) {
   const s = seasonName(state);
-  return `Regnal Year ${state.year} · ${s} <span class="muted">(${SEASON_MEANING[s]})</span>`;
+  const h = heir(state);
+  const rm = reserveMonths(state);
+  const stat = (label, value, cls = '') => `<div class="hstat ${cls}"><small>${label}</small><b>${value}</b></div>`;
+  const pips = Array.from({ length: state.attention.max }, (_, i) => `<i class="${i < state.attention.left ? 'on' : ''}"></i>`).join('');
+  const canEnd = state.phase === 'court';
+  return `<div class="hud__inner">
+    <div class="hud__who">
+      <span class="hud__portrait">${portrait(state.pharaoh, 46)}</span>
+      <div><b class="hud__name">${esc(state.pharaoh.name)}</b><span class="hud__date">Year ${state.year} · ${s} <span class="muted">(${SEASON_MEANING[s]})</span></span></div>
+    </div>
+    <div class="hud__stats">
+      ${stat('Ma’at', `${state.maat}`, state.maat >= 50 ? 'good' : state.maat < 25 ? 'bad' : 'warn')}
+      ${stat('Grain', `${k(state.grain.royal)} · ${rm.toFixed(1)} mo`, rm < 2 ? 'bad' : rm >= 6 ? 'good' : '')}
+      ${stat('Gold', `${fmt(state.gold)} dbn`)}
+      ${stat('Army', `${k(totalMen(state))} · ${Math.round(avgMorale(state))}% morale`, avgMorale(state) < 35 ? 'bad' : '')}
+      ${stat('Heir', h ? `${esc(h.name)} (${h.legitimacy})` : 'None', h ? '' : 'bad')}
+      <div class="hstat attention" title="Royal Attention: what Pharaoh can personally see to this season"><small>Royal Attention</small><b class="pips">${pips} <span>${state.attention.left}/${state.attention.max}</span></b></div>
+    </div>
+    <button class="btn btn--primary hud__end" data-action="advance" ${canEnd ? '' : 'disabled'} title="${canEnd ? 'End the season' : 'Seal this season’s decree in the Throne Room first'}">${canEnd ? 'End the season →' : 'Decree pending'}</button>
+  </div>`;
+}
+
+/** Phone-only bar fixed to the bottom of the screen. */
+export function renderMobileBar(state) {
+  const pips = Array.from({ length: state.attention.max }, (_, i) => `<i class="${i < state.attention.left ? 'on' : ''}"></i>`).join('');
+  const canEnd = state.phase === 'court';
+  if (state.phase === 'ended') return '';
+  return `<span class="pips" aria-label="Royal Attention ${state.attention.left} of ${state.attention.max}">⚡ ${pips}</span>
+    ${canEnd ? '<button class="btn btn--primary" data-action="advance">End the season →</button>' : '<button class="btn btn--ghost" data-tab="throne">Decree pending: go to the Throne Room</button>'}`;
+}
+
+export function renderDock(state, tab) {
+  return DESKS.map(
+    ([id, icon, name]) =>
+      `<button class="dock__tab${tab === id ? ' on' : ''}" data-tab="${id}" aria-pressed="${tab === id}">${icon} <span>${name}</span>${id === 'throne' && state.phase === 'briefing' ? '<i class="dot" title="A decree is waiting"></i>' : ''}</button>`,
+  ).join('');
 }
 
 // ── 👑 THE STATE OF THE REALM ────────────────────────────────────────────
@@ -61,7 +100,6 @@ function stateOfRealm(state) {
   const rival = rivalClaimant(state);
   const d = demands(state);
   const dw = mostDangerousWife(state);
-
   const health = p.health >= 60 ? 'Vigorous' : p.health >= 35 ? 'Ailing' : 'Failing';
   const preg = state.pregnancy ? wife(state, state.pregnancy.wifeId) : null;
 
@@ -92,7 +130,7 @@ function stateOfRealm(state) {
         <br>Gold: <strong>${fmt(state.gold)} deben</strong> <span class="muted">(diplomatic reserve ${fmt(state.goldReserve)})</span>.
         Amun’s granaries <span class="muted">(not yours)</span>: ${fmt(state.grain.temple)} khar.
         ${state.arrears.army || state.arrears.workforce ? `<br><span class="bad">Arrears: army ${state.arrears.army} mo · workforce ${state.arrears.workforce} mo.</span>` : ''}
-        ${state.armyRation < 1 ? '<br><span class="warn">Native regiments on half rations.</span>' : ''}
+        ${state.armyRation < 1 ? `<br><span class="warn">The army is on ${state.armyRation === 0.5 ? 'half' : 'reduced'} rations.</span>` : ''}
       </li>
       <li><strong>The Dynastic Succession:</strong>
         ${h ? `Crown Prince <strong>${esc(h.name)}</strong>, age ${h.age}, son of ${esc(wife(state, h.motherId)?.name ?? 'an unknown mother')}. <strong>Legitimacy ${h.legitimacy} · Loyalty ${h.loyalty}</strong>.` : '<span class="bad">No designated heir.</span>'}
@@ -120,9 +158,7 @@ function briefing(state) {
       </section>`
     : '';
 
-  const labels = opp
-    ? ['Investment', 'Political Dividend', 'Long-Term Dynastic Legacy']
-    : ['Immediate Cost', 'Political Fallout', 'Long-Term Dynastic Risk'];
+  const labels = opp ? ['Investment', 'Political Dividend', 'Long-Term Dynastic Legacy'] : ['Immediate Cost', 'Political Fallout', 'Long-Term Dynastic Risk'];
 
   const options = optionsFor(state)
     .map(
@@ -147,28 +183,41 @@ function briefing(state) {
     ${omens}
     <section class="panel options" aria-labelledby="opts-h">
       <h2 id="opts-h">${opp ? '🏛️ THE ROYAL INVESTMENTS' : '📜 THE STRATEGIC OPTIONS'}</h2>
+      <p class="muted small">You can also give orders from the other desks before or after sealing this decree. The season ends when you choose.</p>
       <div class="options__grid">${options}</div>
-      <p class="muted counter">Counter-proposals are judged by the court oracle, which is not built yet. For now, choose one of the decrees above.</p>
     </section>`;
 }
 
 function seasonReport(state) {
   if (!state.seasonReport || !state.seasonReport.length) return '';
-  return `<details class="panel report" open>
+  return `<details class="panel report" ${state.phase === 'briefing' ? 'open' : ''}>
     <summary>📯 Since last season</summary>
     <ul>${state.seasonReport.map((r) => `<li>${md(r)}</li>`).join('')}</ul>
   </details>`;
 }
 
-function outcome(state) {
+export function commandsLog(state) {
+  if (!state.commands?.length) return '';
+  return `<section class="panel commands">
+    <h2>🪶 This season’s commands</h2>
+    <ul>${state.commands.map((c) => `<li><strong>${md(c.title)}.</strong> ${c.lines.map(md).join(' ')} <span class="chips chips--inline">${c.chips.map(chipHtml).join('')}</span></li>`).join('')}</ul>
+  </section>`;
+}
+
+function outcome(state, { withButton = true } = {}) {
   const o = state.lastOutcome;
+  if (!o) return '';
   return `<section class="panel outcome" aria-labelledby="out-h">
     <h2 id="out-h">📜 THE CHRONICLE RECORDS</h2>
     <h3 class="brief__title">${md(o.eventTitle)}</h3>
     <p class="decree-seal">Decree: <strong>${md(o.decree)}</strong></p>
     ${o.lines.map((l) => `<p>${md(l)}</p>`).join('')}
     <div class="chips">${o.chips.filter((c) => c.delta).map(chipHtml).join('')}</div>
-    <button class="btn btn--primary" data-action="advance">Let the season turn → <kbd>Enter</kbd></button>
+    ${withButton ? `<div class="outcome__next">
+      <p class="muted">The decree is sealed. You have <strong>${state.attention.left} Royal Attention</strong> left: visit the desks to give orders, or end the season.</p>
+      <div class="row">${DESKS.slice(1, 7).map(([id, icon, name]) => `<button class="btn btn--ghost" data-tab="${id}">${icon} ${name}</button>`).join('')}</div>
+      <button class="btn btn--primary" data-action="advance">End the season → <kbd>Enter</kbd></button>
+    </div>` : ''}
   </section>`;
 }
 
@@ -185,76 +234,8 @@ function ended(state) {
   </section>`;
 }
 
-export function renderMain(state) {
-  if (state.phase === 'ended') return (state.lastOutcome ? outcome(state).replace(/<button[\s\S]*?<\/button>/, '') : '') + seasonReport(state) + ended(state);
-  if (state.phase === 'outcome') return outcome(state);
-  return seasonReport(state) + stateOfRealm(state) + briefing(state);
-}
-
-// ── sidebar ──────────────────────────────────────────────────────────────
-
-export function renderSidebar(state) {
-  const h = heir(state);
-  const wives = courtWives(state)
-    .map(
-      (w) => `<li>
-        <div class="row"><strong>${esc(w.name)}</strong>${w.rumored ? ' <span class="badge badge--bad" title="Whispers of a plot">whispers</span>' : ''}<span class="pct">${w.satisfaction}%</span></div>
-        <div class="muted small">${esc(w.title)}. Influence ${w.influence}.</div>
-        ${meter(w.satisfaction, { label: `${w.name} satisfaction` })}
-      </li>`,
-    )
-    .join('');
-  const sons = livingSons(state)
-    .map(
-      (s) => `<li>
-        <div class="row"><strong>${s.id === state.heirId ? '👑 ' : ''}${esc(s.name)}</strong><span class="muted small">age ${s.age}</span></div>
-        <div class="muted small">${esc(s.role)}. Mother: ${esc(wife(state, s.motherId)?.name ?? '?')}</div>
-        <div class="small">Legitimacy ${s.legitimacy} · Loyalty ${s.loyalty}</div>
-      </li>`,
-    )
-    .join('');
-  const daughters = (state.daughters || []).length
-    ? `<p class="muted small">Daughters: ${(state.daughters || []).map((d) => `${esc(d.name)} (${d.age})`).join(', ')}</p>`
-    : '';
-  const monuments = state.monuments
-    .filter((m) => m.active)
-    .map(
-      (m) => `<li><div class="row"><span>${esc(m.name)}</span><span class="pct">${Math.round(m.progress)}%</span></div>${meter(m.progress, { tone: m.done ? 'good' : 'lapis', label: m.name })}</li>`,
-    )
-    .join('');
-  const chron = [...state.chronicle]
-    .reverse()
-    .slice(0, 10)
-    .map((c) => `<li><span class="muted small">Year ${c.year}, ${['Akhet', 'Peret', 'Shemu'][c.season]}</span><br>${md(c.title)}</li>`)
-    .join('');
-
-  return `
-    <section class="panel side maat">
-      <h2>⚖️ Ma’at vs. Isfet</h2>
-      <div class="maat__scale"><span>Isfet</span><span>Ma’at</span></div>
-      ${meter(state.maat, { label: 'Ma’at' })}
-      <p class="small"><strong>${state.maat}/100</strong>: ${esc(maatState(state.maat))}</p>
-    </section>
-    <section class="panel side">
-      <h2>🪷 The Harem</h2>
-      <ul class="roster">${wives}</ul>
-    </section>
-    <section class="panel side">
-      <h2>🦅 King’s Sons</h2>
-      <ul class="roster">${sons || '<li class="muted">No living sons.</li>'}</ul>
-      ${daughters}
-      ${h ? '' : '<p class="bad small">No heir has been designated.</p>'}
-    </section>
-    <section class="panel side">
-      <h2>🦩 The Vizier</h2>
-      <p class="small"><strong>${esc(state.vizier.name)}</strong>, ${esc(state.vizier.title)}<br>Competence ${state.vizier.competence} · Integrity ${state.vizier.integrity} · Ambition ${state.vizier.ambition}</p>
-    </section>
-    <section class="panel side">
-      <h2>🧱 Monuments</h2>
-      <ul class="roster">${monuments}</ul>
-    </section>
-    <section class="panel side">
-      <h2>📜 Chronicle</h2>
-      <ol class="chronicle">${chron || '<li class="muted">The scribes await your first decree.</li>'}</ol>
-    </section>`;
+export function renderThrone(state) {
+  if (state.phase === 'ended') return outcome(state, { withButton: false }) + seasonReport(state) + ended(state);
+  if (state.phase === 'court') return outcome(state) + commandsLog(state) + seasonReport(state) + stateOfRealm(state);
+  return seasonReport(state) + commandsLog(state) + stateOfRealm(state) + briefing(state);
 }

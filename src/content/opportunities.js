@@ -160,7 +160,7 @@ const babylonPrincess = {
       risk: 'A powerful foreign queen with a dowry, and in time a son of her own.',
       apply(s, api) {
         api.fx({ gold: 500, wives: { henuttawy: -15, asmunikal: -10 }, flags: { babylonAllied: true } });
-        s.wives.push({ id: 'ishtarummi', name: 'Ishtar-ummi', title: 'Babylonian Royal Wife', origin: 'Daughter of the King of Karduniash', tie: 'babylon', influence: 40, ambition: 60, satisfaction: 75, plot: 0, status: 'court' });
+        s.wives.push({ id: 'ishtarummi', kind: 'wife-babylon', seed: 901, age: 19, name: 'Ishtar-ummi', title: 'Babylonian Royal Wife', origin: 'Daughter of the King of Karduniash', tie: 'babylon', influence: 40, ambition: 60, satisfaction: 75, plot: 0, status: 'court' });
         api.log('Ishtar-ummi is installed in the north palace with honors only a Great Royal Wife has received before.');
       },
     },
@@ -185,7 +185,7 @@ const babylonPrincess = {
       risk: 'Babylon is insulted. A humiliated foreign wife makes a natural conspirator.',
       apply(s, api) {
         api.fx({ gold: 800, approval: { harem: 5 }, flags: { babylonCold: true } });
-        s.wives.push({ id: 'ishtarummi', name: 'Ishtar-ummi', title: 'Babylonian Wife (secluded)', origin: 'Daughter of the King of Karduniash', tie: 'babylon', influence: 5, ambition: 70, satisfaction: 20, plot: 0, status: 'court' });
+        s.wives.push({ id: 'ishtarummi', kind: 'wife-babylon', seed: 901, age: 19, name: 'Ishtar-ummi', title: 'Babylonian Wife (secluded)', origin: 'Daughter of the King of Karduniash', tie: 'babylon', influence: 5, ambition: 70, satisfaction: 20, plot: 0, status: 'court' });
         api.log('Ishtar-ummi is taken to the Fayum. Her father’s next letter is angry.');
       },
     },

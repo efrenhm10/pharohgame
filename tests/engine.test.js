@@ -73,11 +73,11 @@ test('empty granaries turn into arrears', () => {
   assert.equal(s.arrears.army, before + 2);
 });
 
-test('decree → outcome → advance; never advances without a decree', () => {
+test('decree → court → advance; never advances without a decree', () => {
   const s = newGame('flow');
   assert.throws(() => advance(s));
   decree(s, 'karnak');
-  assert.equal(s.phase, 'outcome');
+  assert.equal(s.phase, 'court');
   assert.ok(s.lastOutcome.lines.length > 0);
   assert.throws(() => decree(s, 'karnak'));
   advance(s);

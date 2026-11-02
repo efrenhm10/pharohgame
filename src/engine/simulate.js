@@ -17,6 +17,9 @@ import {
 import { chooseBriefing } from './rotation.js';
 import { endReign } from './ending.js';
 import { SON_NAMES, DAUGHTER_NAMES } from '../content/names.js';
+import { armySeason, syncArmyBurn, coupThreat } from './army.js';
+import { randTrait, seedNum } from './people.js';
+import { fmt } from './util.js';
 
 export function forceEvent(state, eventId, priority, ctx = {}) {
   const existing = state.forced.find((f) => f.eventId === eventId);
@@ -33,6 +36,7 @@ export function endSeason(state) {
   const endingSeason = state.season;
 
   // 1. Taxes in, rations out.
+  syncArmyBurn(state);
   collectTaxes(state, report);
   const pay = paySeason(state, report);
 
@@ -64,6 +68,14 @@ export function endSeason(state) {
   }
   if (state.arrears.workforce >= 2) forceEvent(state, 'tomb_strike', 50);
 
+  // Standing policies (Granaries desk).
+  policySeason(state, report);
+
+  // The army's morale; the nomes' loyalty; the temple loan.
+  armySeason(state, report);
+  nomesSeason(state, report);
+  templeLoanSeason(state, report);
+
   // 3. Monuments.
   progressMonuments(state, report);
 
@@ -85,6 +97,7 @@ export function endSeason(state) {
   state.season = (state.season + 1) % 3;
   state.pharaoh.away = false;
   if (state.season === 0) newYear(state, report);
+  newSeasonCourt(state);
 
   // 8. Seasonal illness.
   const illnessChance = 0.03 + Math.max(0, state.pharaoh.age - 45) * 0.005;
@@ -125,6 +138,8 @@ function newYear(state, report) {
   state.pharaoh.age += 1;
   for (const s of livingSons(state)) s.age += 1;
   for (const d of state.daughters || []) d.age += 1;
+  for (const w of state.wives) w.age = (w.age || 30) + 1;
+  for (const g of state.army?.generals || []) g.age = (g.age || 40) + 1;
 
   // Yearly aging.
   const decline = Math.max(0, state.pharaoh.age - 40) * 0.4 + random(state) * 3;
@@ -183,13 +198,15 @@ function progressMonuments(state, report) {
       continue;
     }
     if (m.ongoing) {
-      m.progress = clamp(m.progress + m.perSeason, 0, 100);
+      const pace = (state.policy?.workforceRation ?? 1) < 1 ? 0.5 : 1;
+      m.progress = clamp(m.progress + m.perSeason * pace, 0, 100);
       if (m.progress >= 100 && !m.done) {
         m.done = true;
         report.push(`**The ${m.name} is complete.** Pharaoh's house of eternity is ready.`);
       }
       continue;
     }
+    if (m.paused) continue;
     if (state.grain.royal <= 0) {
       report.push(`Work on the ${m.name} stalled. There was no grain to feed the crews.`);
       continue;
@@ -204,6 +221,7 @@ function progressMonuments(state, report) {
       const h = heir(state);
       if (r.heirLegitimacy && h) h.legitimacy = clamp(h.legitimacy + r.heirLegitimacy, 0, 100);
       if (r.dynastyLegitimacy) for (const s of livingSons(state)) s.legitimacy = clamp(s.legitimacy + r.dynastyLegitimacy, 0, 100);
+      if (r.flags) Object.assign(state.flags, r.flags);
       report.push(`**The ${m.name} is complete!** The gods and the people see Pharaoh's power cut in stone.`);
     }
   }
@@ -263,15 +281,16 @@ function birth(state, wifeId, report) {
     const name = SON_NAMES.find((n) => !used.has(n)) || `Son of Year ${state.year}`;
     const id = `son-${state.turn}`;
     const legitimacy = w.title.startsWith('Great') ? 55 : w.tie === 'hatti' || w.tie === 'babylon' ? 40 : 30;
-    state.sons.push({ id, name, age: 0, motherId: w.id, legitimacy, loyalty: 80, role: 'Infant King’s Son', alive: true });
+    state.sons.push({ id, kind: 'prince', sex: 'm', seed: seedNum(state), name, age: 0, motherId: w.id, legitimacy, loyalty: 80, role: 'Infant King’s Son', trait: randTrait(state), edu: null, skill: null, spouse: null, alive: true });
     w.satisfaction = clamp(w.satisfaction + 15, 0, 100);
     w.influence = clamp(w.influence + 10, 0, 100);
     state.forcedOpportunity = { eventId: 'son_born', ctx: { sonId: id }, since: state.turn };
     report.push(`**${w.name} has borne Pharaoh a son: Prince ${name}.** A new piece enters the game of succession.`);
   } else {
-    const name = DAUGHTER_NAMES[(state.daughters || []).length % DAUGHTER_NAMES.length];
     state.daughters = state.daughters || [];
-    state.daughters.push({ name, age: 0, motherId: w.id });
+    const usedD = new Set(state.daughters.map((d) => d.name));
+    const name = DAUGHTER_NAMES.find((n) => !usedD.has(n)) || `Daughter of Year ${state.year}`;
+    state.daughters.push({ id: `dau-${state.turn}`, kind: 'princess', sex: 'f', seed: seedNum(state), name, age: 0, motherId: w.id, role: 'King’s Daughter', trait: randTrait(state), edu: null, skill: null, spouse: null, alive: true });
     w.satisfaction = clamp(w.satisfaction + 5, 0, 100);
     report.push(`${w.name} has borne Pharaoh a daughter, Princess ${name}.`);
   }
@@ -286,6 +305,13 @@ function thresholdChecks(state, report) {
     else report.push('Officers at Pi-Ramesses speak openly of who should wear the Blue Crown.');
   } else if (mil < 50 && state.arrears.army >= 3) {
     report.push('Units of the chariotry refuse to leave barracks until they are fed.');
+  }
+
+  // A disloyal commander with troops at the capital may try his luck.
+  const threat = coupThreat(state);
+  if (threat && threat.risk > 0.05 && !(state.usedEvents.march_on_palace > state.turn - 3)) {
+    if (chance(state, threat.risk)) forceEvent(state, 'march_on_palace', 100, { leaderId: threat.person.id });
+    else if (threat.risk > 0.15) report.push(`*${threat.person.name} has ${fmt(threat.men)} men at the capital, and his officers dine with him every night.*`);
   }
 
   if (state.blocs.priesthood.approval < 30 || state.maat <= 5) {
@@ -305,4 +331,71 @@ function thresholdChecks(state, report) {
   if (reserveMonths(state) < 1 && state.season !== 0) {
     if (!(state.usedEvents.grain_riot > state.turn - 3)) forceEvent(state, 'grain_riot', 55);
   }
+}
+
+// ── Standing policies, nomes, loans, the new season ──────────────────────
+
+function policySeason(state, report) {
+  const p = state.policy;
+  if (!p) return;
+  if (p.workforceRation < 1) {
+    if (chance(state, 0.2)) forceEvent(state, 'tomb_strike', 50);
+    report.push('The royal workforce grumbles on reduced rations. Work on the tomb slows.');
+  }
+  if (p.palace === 'lavish') {
+    for (const w of courtWives(state)) w.satisfaction = clamp(w.satisfaction + 2, 0, 100);
+  } else if (p.palace === 'austere') {
+    for (const w of courtWives(state)) w.satisfaction = clamp(w.satisfaction - 2, 0, 100);
+  }
+  if (p.tax === 'heavy') {
+    for (const n of state.nomes) n.loyalty = clamp(n.loyalty - 3, 0, 100);
+    changeMaat(state, -1);
+    report.push('Heavy taxes: the nomes resent the scribes. Nome loyalty −3, Ma’at −1.');
+  } else if (p.tax === 'light') {
+    for (const n of state.nomes) n.loyalty = clamp(n.loyalty + 2, 0, 100);
+  }
+}
+
+function nomesSeason(state, report) {
+  if (!state.nomes) return;
+  for (const n of state.nomes) {
+    if (n.hereditary && n.loyalty < 70) n.loyalty += 1;
+    if (n.canalUntil && state.turn + 1 >= n.canalUntil) {
+      n.canalUntil = null;
+      n.yield = Math.round((n.yield + 0.08) * 100) / 100;
+      report.push(`The new canals of ${n.name} are finished. Its harvest is 8% larger from now on.`);
+    }
+  }
+  const avg = state.nomes.reduce((s, n) => s + n.loyalty, 0) / state.nomes.length;
+  const b = state.blocs.bureaucracy.approval;
+  if (Math.abs(avg - b) >= 2) changeApproval(state, 'bureaucracy', avg > b ? 1 : -1);
+  const worst = [...state.nomes].sort((a, c) => a.loyalty - c.loyalty)[0];
+  if (worst.loyalty < 20) report.push(`*${worst.name} barely answers the Vizier’s letters. Nomarch ${worst.nomarch} acts like a king.*`);
+}
+
+function templeLoanSeason(state, report) {
+  const loan = state.templeLoan;
+  if (!loan || state.turn + 1 < loan.dueTurn) return;
+  const owed = Math.round(loan.amount * 1.1);
+  if (state.grain.royal >= owed) {
+    state.grain.royal -= owed;
+    report.push(`The loan from Karnak fell due. ${fmt(owed)} khar went back to Amun’s granaries.`);
+    state.grain.temple += owed;
+    state.templeLoan = null;
+  } else {
+    changeApproval(state, 'priesthood', -12);
+    loan.dueTurn = state.turn + 3;
+    report.push('**Pharaoh could not repay Karnak’s grain.** The priests extend the loan, and remind everyone. Priesthood −12%.');
+  }
+}
+
+export function newSeasonCourt(state) {
+  const base = 3 + (state.vizier.competence >= 70 ? 1 : 0) - (state.pharaoh.health < 35 ? 1 : 0);
+  state.attention = { max: base, left: base };
+  state.commands = [];
+  state.shortlists = {};
+  state.matches = {};
+  // High Priest's personal loyalty pulls Karnak toward or away from the throne.
+  if (state.highPriest?.loyalty >= 60) changeApproval(state, 'priesthood', 1);
+  else if (state.highPriest?.loyalty < 35) changeApproval(state, 'priesthood', -1);
 }

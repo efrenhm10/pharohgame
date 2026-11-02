@@ -5,6 +5,7 @@ import { fmt } from '../engine/util.js';
 import { heir, son, wife, sonsOf, rivalClaimant, isAdult, approval, livingSons } from '../engine/realm.js';
 import { reserveMonths } from '../engine/economy.js';
 import { cubitsLabel } from '../engine/flood.js';
+import { commander, units, syncArmyBurn } from '../engine/army.js';
 
 const heirName = (s) => (heir(s) ? heir(s).name : 'no one');
 const victory = (api, extra = {}) =>
@@ -49,7 +50,7 @@ const hungerFlood = {
           flags: { amunExempt: true, amunDebt: true },
         });
         api.log('The stela is sealed. Amun’s granaries open, and the chariotry eats.');
-        if (api.battle({ base: 0.65 })) {
+        if (api.battle({ base: 0.65, stations: ['capital', 'west'] })) {
           victory(api, { sons: { khaemopet: { legitimacy: 10 } } });
           api.log('At the Canopic branch Khaemopet breaks Meryey’s host. The Libu chief flees west and leaves his bow and sandals behind. The army cheers its general first, and you second.');
         } else {
@@ -75,8 +76,12 @@ const hungerFlood = {
           vizier: { ambition: 5 },
           flags: { nakhtminDisgraced: true },
         });
+        const hare = s.nomes.find((n) => n.id === 'hare');
+        hare.nomarch = 'Thutnakht';
+        hare.loyalty = 40;
+        hare.kinOf = null;
         api.log('Nakhtmin is stripped of his office in front of his own granary doors. His grain goes north on royal barges.');
-        if (api.battle({ base: 0.4 })) {
+        if (api.battle({ base: 0.4, stations: ['capital', 'west'] })) {
           victory(api, { sons: { khaemopet: { legitimacy: 5 } } });
           api.log('Half-fed, the army wins anyway. Khaemopet crushes the Libu at the Canopic branch and sends you Meryey’s captured war-standard without a word of greeting.');
         } else {
@@ -108,7 +113,7 @@ const hungerFlood = {
           api.fx({ health: -15 });
           api.log('The march is hard. Your jaw swells with fever and the physicians bleed you in your tent.');
         }
-        if (api.battle({ base: 0.65 })) {
+        if (api.battle({ base: 0.65, stations: ['capital', 'west'] })) {
           victory(api, { maat: 20, approval: { military: 15 }, sons: { ramose: { legitimacy: 5 } } });
           api.log('**Victory.** You drive your chariot through Meryey’s line yourself. Six thousand Libu fall and their families are taken as captives. Poets at Thebes are already writing the hymn.');
         } else {
@@ -126,6 +131,9 @@ const hungerFlood = {
       apply(s, api) {
         const k = son(s, 'khaemopet');
         k.role = 'Generalissimo and Eldest King’s Son';
+        const hare = s.nomes.find((n) => n.id === 'hare');
+        hare.hereditary = true;
+        hare.loyalty = 75;
         api.fx({
           sons: { khaemopet: { legitimacy: 25, loyalty: 20 }, ramose: { legitimacy: -20 } },
           approval: { military: 25, bureaucracy: 15, priesthood: -25 },
@@ -134,7 +142,7 @@ const hungerFlood = {
           flags: { coRegent: 'khaemopet', nomeSupplyUntil: s.turn + 3 },
         });
         api.log('The title is proclaimed in the barracks at Pi-Ramesses. The Hare Nome’s barges arrive the same week, as if they had been waiting.');
-        if (api.battle({ base: 0.7 })) {
+        if (api.battle({ base: 0.7, stations: ['capital', 'west'] })) {
           victory(api, { sons: { khaemopet: { legitimacy: 10 } } });
           api.log('Khaemopet wins a crushing victory at the Canopic branch. The army now calls him “the Bull of the West.” At Karnak, the priests say nothing at all.');
         } else {
@@ -381,7 +389,7 @@ const vizierLedger = {
         const w = [...s.wives].filter((x) => x.status === 'court').sort((a, b) => a.satisfaction - b.satisfaction)[0];
         if (w && w.satisfaction < 40) fx.wives = { [w.id]: { plot: 25 } };
         api.fx(fx);
-        s.vizier = { name: 'Penbuy', title: 'Vizier of the South', competence: 48, integrity: 85, ambition: 30 };
+        s.vizier = { id: 'penbuy', kind: 'scribe', seed: 777, name: 'Penbuy', title: 'Vizier of the South', age: 31, competence: 48, integrity: 85, ambition: 30, loyalty: 80, origin: 'scribe' };
         api.log(`${old} hands over his seal of office. Penbuy takes it with shaking hands.`);
       },
     },
@@ -421,7 +429,7 @@ const vizierLedger = {
           omen: { id: 'nomarch_feasts', text: 'The Nomarchs of Middle Egypt have been feasting together at Hermopolis. No royal scribe was invited.', eventId: 'nomarch_league', delay: 2 },
         });
         const old = s.vizier.name;
-        s.vizier = { name: 'Penbuy', title: 'Vizier of the South', competence: 48, integrity: 85, ambition: 30 };
+        s.vizier = { id: 'penbuy', kind: 'scribe', seed: 777, name: 'Penbuy', title: 'Vizier of the South', age: 31, competence: 48, integrity: 85, ambition: 30, loyalty: 80, origin: 'scribe' };
         api.log(`${old} is executed at the Treasury gate. Penbuy is made Vizier the same afternoon.`);
       },
     },
@@ -448,7 +456,7 @@ const nubianRevolt = {
       risk: 'A victorious Viceroy of Kush has his own army and his own gold.',
       apply(s, api) {
         api.fx({ grain: -60000 });
-        if (api.battle({ base: 0.55 })) {
+        if (api.battle({ base: 0.55, stations: ['south'] })) {
           api.fx({ maat: 5, approval: { military: 5 }, gold: 600 });
           api.log('The Viceroy burns the rebel villages of Irem and sends their chiefs north in chains, with 600 deben of captured gold.');
         } else {
@@ -484,7 +492,7 @@ const nubianRevolt = {
       risk: 'Another wife, another faction, perhaps another son with a claim.',
       apply(s, api) {
         api.fx({ approval: { military: -5 }, maat: -3, flags: { nubianHalf: true } });
-        s.wives.push({ id: `kushite-${s.turn}`, name: 'Tabiry', title: 'Kushite Wife', origin: 'Daughter of the Chief of Irem', tie: 'kush', influence: 15, ambition: 50, satisfaction: 55, plot: 0, status: 'court' });
+        s.wives.push({ id: `kushite-${s.turn}`, kind: 'wife-kush', seed: 779 + s.turn, age: 19, name: 'Tabiry', title: 'Kushite Wife', origin: 'Daughter of the Chief of Irem', tie: 'kush', influence: 15, ambition: 50, satisfaction: 55, plot: 0, status: 'court' });
         api.log('Tabiry of Irem arrives at Thebes with ebony and ivory. Half the gold flows again.');
       },
     },
@@ -530,6 +538,7 @@ const nomarchLeague = {
       risk: 'Egypt drifts toward a land of nomes. Your grandsons will rule governors who answer to their fathers, not to the king.',
       apply(s, api) {
         api.fx({ approval: { bureaucracy: 22 }, intake: 0.95, wives: { henuttawy: 10 }, flags: { nomarchHeredity: true } });
+        for (const n of s.nomes) if (n.id !== 'waset' && n.id !== 'memphis') Object.assign(n, { hereditary: true, loyalty: Math.min(100, n.loyalty + 20) });
         api.log('The decree is carved at Hermopolis. Eight families will rule their nomes for as long as their bloodlines last.');
       },
     },
@@ -541,6 +550,7 @@ const nomarchLeague = {
       risk: (s, ctx) => (ctx.secession ? 'The nomes are already defying you. Refusing them now may break the Two Lands apart.' : 'The Vizier’s power grows, and the deposed families plot.'),
       apply(s, api) {
         api.fx({ approval: { bureaucracy: -15 }, intake: 1.05, maat: 3, vizier: { ambition: 5 } });
+        for (const n of s.nomes) Object.assign(n, { hereditary: false, loyalty: Math.max(0, n.loyalty - 10) });
         if (api.ctx.secession && s.blocs.bureaucracy.approval < 10 && s.maat < 40 && api.chance(0.35)) {
           api.log('The deposed Nomarchs refuse to go. Middle Egypt declares for its own chiefs, and the Delta follows. The Two Lands are two again, and then many.');
           api.end('fragmented', 'The nomes broke away from the Crown. Egypt has entered an Intermediate Period.');
@@ -560,7 +570,9 @@ const nomarchLeague = {
         const wives = {};
         for (const w of s.wives.filter((x) => x.status === 'court')) wives[w.id] = -5;
         api.fx({ gold: -200, approval: { bureaucracy: 12 }, wives });
-        s.wives.push({ id: `asyut-${s.turn}`, name: 'Neferure', title: 'Secondary Wife', origin: 'Daughter of the Nomarch of Asyut', tie: 'bureaucracy', influence: 30, ambition: 60, satisfaction: 60, plot: 0, status: 'court' });
+        s.wives.push({ id: `asyut-${s.turn}`, kind: 'wife', seed: 780 + s.turn, age: 18, name: 'Neferure', title: 'Secondary Wife', origin: 'Daughter of the Nomarch of Asyut', tie: 'bureaucracy', influence: 30, ambition: 60, satisfaction: 60, plot: 0, status: 'court' });
+        const asy = s.nomes.find((n) => n.id === 'asyut');
+        asy.loyalty = Math.min(100, asy.loyalty + 20);
         api.log('Neferure of Asyut arrives with forty barges of grain as her dowry, and her father’s ambitions.');
       },
     },
@@ -572,6 +584,7 @@ const nomarchLeague = {
       risk: 'The granaries will be thin after Shemu. The petition for heredity will come back.',
       apply(s, api) {
         api.fx({ approval: { bureaucracy: 15, priesthood: -3 }, maat: 3, flags: { taxRemissionYear: s.year } });
+        for (const n of s.nomes) n.loyalty = Math.min(100, n.loyalty + 8);
         api.log('Pharaoh’s mercy is proclaimed in the nome capitals. The Nomarchs bow, and put their petition away for later.');
       },
     },
@@ -727,7 +740,7 @@ const oracleSpeaks = {
         if (approval(s, 'military') >= 50) {
           api.fx({ approval: { priesthood: 35 - s.blocs.priesthood.approval, military: 5 }, maat: -10 });
           const old = s.highPriest.name;
-          s.highPriest = { name: 'Bakenamun' };
+          s.highPriest = { id: 'bakenamun', kind: 'priest', seed: 778, name: 'Bakenamun', title: 'High Priest of Amun', age: 50, competence: 60, integrity: 55, ambition: 40, loyalty: 75, origin: 'priest' };
           api.log(`${old} is dragged from the sanctuary. Bakenamun, a man of your choosing, is installed in his place.`);
         } else if (api.chance(0.5)) {
           api.log('The temple guard and the Theban mob drive off the Medjay. Thebes proclaims that Amun has rejected you.');
@@ -759,10 +772,16 @@ const oracleSpeaks = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────
-function coupLeader(s) {
+function coupLeader(s, ctx = {}) {
+  if (ctx.leaderId) {
+    const c = commander(s, ctx.leaderId);
+    if (c?.isSon) return { son: s.sons.find((x) => x.id === c.id), name: `Prince ${c.name}` };
+    if (c) return { son: null, general: s.army.generals.find((g) => g.id === c.id), name: `General ${c.name}` };
+  }
   const r = rivalClaimant(s);
   if (r && isAdult(r) && r.loyalty < 60) return { son: r, name: `Prince ${r.name}` };
-  return { son: null, name: 'General Paramessu' };
+  const g = [...s.army.generals].sort((a, b) => a.loyalty - b.loyalty)[0];
+  return { son: null, general: g, name: g ? `General ${g.name}` : 'A general of the chariotry' };
 }
 
 const marchOnPalace = {
@@ -771,8 +790,8 @@ const marchOnPalace = {
   title: 'The March on the Palace',
   forcedOnly: true,
   major: true,
-  brief: (s) => {
-    const L = coupLeader(s);
+  brief: (s, ctx) => {
+    const L = coupLeader(s, ctx);
     return [
       `Chariots on the Memphis road. **${L.name}** is marching on Pi-Ramesses with two divisions, the divisions of Ptah and Seth, which are owed **${s.arrears.army} months** of rations.`,
       `They have not yet crossed the palace canal. Their envoy says the army only wants *"what is owed, and a king who pays it."* The Sherden guard is loyal for as long as your gold holds out: **${fmt(s.gold)} deben**. Military approval: **${s.blocs.military.approval}%**.`,
@@ -795,12 +814,12 @@ const marchOnPalace = {
     },
     {
       id: 'concede',
-      title: (s) => (coupLeader(s).son ? `Name ${coupLeader(s).name} Crown Prince` : 'Name the General Deputy of the Two Lands'),
-      cost: (s) => (coupLeader(s).son ? `Prince ${coupLeader(s).son.name} replaces ${heirName(s)} as heir.` : 'General Paramessu becomes regent-in-waiting, as Horemheb once did.'),
+      title: (s, ctx) => (coupLeader(s, ctx).son ? `Name ${coupLeader(s, ctx).name} Crown Prince` : `Name ${coupLeader(s, ctx).name} Deputy of the Two Lands`),
+      cost: (s, ctx) => (coupLeader(s, ctx).son ? `Prince ${coupLeader(s, ctx).son.name} replaces ${heirName(s)} as heir.` : `${coupLeader(s, ctx).name} becomes regent-in-waiting, as Horemheb once did.`),
       fallout: 'Military +30%. Priesthood −15%. The displaced heir’s mother will never forgive you.',
       risk: 'The throne passes to whoever had the army. Everyone at court has seen it happen.',
       apply(s, api) {
-        const L = coupLeader(s);
+        const L = coupLeader(s, api.ctx);
         const h = heir(s);
         if (L.son) {
           const fx = { approval: { military: 30, priesthood: -15 }, arrears: { army: -1 }, sons: { [L.son.id]: { legitimacy: 30, loyalty: 30 } }, heir: L.son.id };
@@ -810,8 +829,9 @@ const marchOnPalace = {
         } else {
           const fx = { approval: { military: 30, priesthood: -15 }, arrears: { army: -1 }, maat: -5, flags: { generalRegent: true } };
           if (h) fx.sons = { [h.id]: { legitimacy: -15 } };
+          if (L.general) L.general.loyalty = Math.min(100, L.general.loyalty + 30);
           api.fx(fx);
-          api.log('General Paramessu kneels before you as Deputy of the Two Lands. Everyone knows which of you holds the army.');
+          api.log(`${L.name} kneels before you as Deputy of the Two Lands. Everyone knows which of you holds the army.`);
         }
       },
     },
@@ -823,7 +843,7 @@ const marchOnPalace = {
       fallout: 'If you win: the leader is broken, Military −10% from the purges, Ma’at −5. If you lose, you lose the throne.',
       risk: 'Everything. This is the throne itself.',
       apply(s, api) {
-        const L = coupLeader(s);
+        const L = coupLeader(s, api.ctx);
         api.fx({ gold: -500 });
         const p = 0.45 + (s.gold >= 2000 ? 0.1 : 0) + (s.flags.sherdenSettled ? 0.1 : 0);
         if (api.chance(p)) {
@@ -832,6 +852,9 @@ const marchOnPalace = {
             fx.sons = { [L.son.id]: { legitimacy: -40, loyalty: -40 } };
             L.son.role = 'Exiled to the Kharga Oasis';
           }
+          const leaderId = L.son ? L.son.id : L.general?.id;
+          for (const u of units(s)) if (u.commanderId === leaderId) u.commanderId = null;
+          if (L.general) s.army.generals = s.army.generals.filter((g) => g !== L.general);
           api.fx(fx);
           api.log(`The Sherden hold the canal bridge until dawn. ${L.name}’s divisions break and scatter. The ringleaders are impaled along the Memphis road.`);
         } else {
@@ -1011,7 +1034,7 @@ const seaPeoples = {
       risk: 'A defeat in the Delta is seen by the whole of Egypt.',
       apply(s, api) {
         api.fx({ grain: -80000 });
-        if (api.battle({ base: 0.55 + (s.flags.westFortified ? 0.1 : 0) + (s.flags.hittiteHorses ? 0.05 : 0) })) {
+        if (api.battle({ base: 0.55 + (s.flags.westFortified ? 0.1 : 0) + (s.flags.hittiteHorses ? 0.05 : 0), stations: ['capital', 'delta'] })) {
           api.fx({ maat: 12, approval: { military: 10 }, flags: { victory: true, sherdenSettled: true } });
           api.log('Archers on the riverbanks shoot the raiders’ ships to pieces. The survivors are branded with Pharaoh’s name and enrolled in his guard.');
         } else {
@@ -1028,7 +1051,11 @@ const seaPeoples = {
       fallout: 'Military −5%: native soldiers resent foreigners being given land. Ma’at −3.',
       risk: 'A foreign garrison inside Egypt, loyal to whoever pays it.',
       apply(s, api) {
-        api.fx({ gold: -700, burn: { army: 5000 }, approval: { military: -5 }, maat: -3, flags: { sherdenSettled: true } });
+        api.fx({ gold: -700, approval: { military: -5 }, maat: -3, flags: { sherdenSettled: true } });
+        const pel = units(s).find((u) => u.id === 'peleset');
+        if (pel) pel.men += 1000;
+        else s.army.units.push({ id: 'peleset', name: 'Peleset Garrison', kind: 'mercenary', men: 1000, quality: 65, morale: 55, commanderId: null, station: 'delta' });
+        syncArmyBurn(s);
         api.log('The Peleset are given land and garrison duty. They take both.');
       },
     },
@@ -1157,6 +1184,125 @@ const coptosFraud = {
   ],
 };
 
+// ─────────────────────────────────────────────────────────────────────────
+const westPower = (s) => units(s).filter((u) => u.station === 'west').reduce((t, u) => t + u.men, 0);
+const libyanRaid = {
+  id: 'libyan_raid',
+  type: 'crisis',
+  title: 'Raiders on the Western Road',
+  when: (s) => s.realms.libu.relation < -40 && westPower(s) < 6000 && s.turn > 2,
+  weight: 9,
+  brief: (s) => [
+    `Libu war-bands have crossed the western desert and are burning villages along the Canopic branch. The western forts hold **${fmt(westPower(s))} men**. That is not enough to stop them.`,
+    'The Nomarch of the Western Delta begs for soldiers. The generals say the capital cannot be left bare. The raiders will be gone with their cattle before anyone decides.',
+  ],
+  options: [
+    {
+      id: 'march',
+      title: 'March the Capital Divisions West',
+      cost: '30,000 khar for a fast march. The capital is guarded only by what you leave behind.',
+      fallout: 'If you win: Ma’at +6, Military +5%, the Libu are cowed. If you lose: Ma’at −10, the Delta suffers.',
+      risk: 'Your best troops are away from the throne for a season.',
+      apply(s, api) {
+        api.fx({ grain: -30000 });
+        if (api.battle({ base: 0.55, stations: ['capital', 'west'] })) {
+          s.realms.libu.relation = Math.min(100, s.realms.libu.relation + 20);
+          api.fx({ maat: 6, approval: { military: 5 } });
+          api.log('The chariotry catches the raiders at the edge of the desert. Few of them see their tents again.');
+        } else {
+          api.fx({ maat: -10, intake: 0.98 });
+          api.log('The raiders slip away into the desert with their plunder. The army arrives to find smoking villages.');
+        }
+      },
+    },
+    {
+      id: 'payoff',
+      title: 'Pay the Raiders to Leave',
+      available: (s) => s.gold >= 500,
+      cost: '500 deben of gold.',
+      fallout: 'Military −6%: soldiers despise a king who pays tribute to nomads. Ma’at −4.',
+      risk: 'The Libu learn that Egypt pays. They will be back.',
+      apply(s, api) {
+        s.realms.libu.relation = Math.min(100, s.realms.libu.relation + 10);
+        api.fx({ gold: -500, approval: { military: -6 }, maat: -4 });
+        api.log('Gold is left at a desert well. The war-bands ride west, for now.');
+      },
+    },
+    {
+      id: 'abandon',
+      title: 'Pull the Villagers Back behind the Forts',
+      cost: 'The western fields are left to the raiders for a season.',
+      fallout: 'Bureaucracy −5%: the Western Delta feels abandoned. Ma’at −5.',
+      risk: 'Royal tax intake −3% forever as villages are lost.',
+      apply(s, api) {
+        const d = s.nomes.find((n) => n.id === 'delta');
+        d.loyalty = Math.max(0, d.loyalty - 15);
+        api.fx({ approval: { bureaucracy: -5 }, maat: -5, intake: 0.97 });
+        api.log('Families crowd into the fortified towns. Behind them, the raiders burn what they cannot carry.');
+      },
+    },
+  ],
+};
+
+const canaanRevolt = {
+  id: 'canaan_revolt',
+  type: 'crisis',
+  title: 'The Vassals of Canaan Stop Paying',
+  when: (s) => s.realms.canaan.relation < 30 && !units(s).some((u) => u.station === 'canaan') && s.turn > 3,
+  weight: 7,
+  brief: (s) => [
+    'The king of Gezer has thrown out the Egyptian commissioner. Ashkelon has closed its gates. Megiddo writes that it is "the loyal servant of Pharaoh, at the feet of the king seven times and seven times," and sends nothing.',
+    `No Egyptian garrison stands in Canaan. Relations with the vassals: **${s.realms.canaan.relation}**. If one city defies Pharaoh and lives, they all will.`,
+  ],
+  options: [
+    {
+      id: 'campaign',
+      title: 'March on Gezer',
+      cost: '50,000 khar to supply the army across Sinai.',
+      fallout: 'If you win: Ma’at +8, Military +8%, 700 deben of silver. If you lose: Ma’at −10.',
+      risk: 'The army is far from home for a season.',
+      apply(s, api) {
+        api.fx({ grain: -50000 });
+        if (api.battle({ base: 0.55, stations: ['capital', 'canaan'] })) {
+          s.realms.canaan.relation = Math.min(100, s.realms.canaan.relation + 30);
+          api.fx({ maat: 8, approval: { military: 8 }, gold: 700 });
+          api.log('“Gezer is seized,” the scribes carve. The other cities send their tribute before the army even arrives.');
+        } else {
+          s.realms.canaan.relation = Math.max(-100, s.realms.canaan.relation - 10);
+          api.fx({ maat: -10, approval: { military: -5 } });
+          api.log('The army fails before the walls of Gezer and marches home through the summer heat.');
+        }
+      },
+    },
+    {
+      id: 'garrison',
+      title: 'Send the Division of Ptah as a Permanent Garrison',
+      cost: 'The Division of Ptah moves to Canaan and stays there.',
+      fallout: 'Vassal relation +15. Military +2%.',
+      risk: 'Four thousand fewer men at home for any coup, riot or raid.',
+      apply(s, api) {
+        const u = units(s).find((x) => x.id === 'ptah') || units(s).find((x) => x.kind === 'infantry');
+        u.station = 'canaan';
+        s.realms.canaan.relation = Math.min(100, s.realms.canaan.relation + 15);
+        api.fx({ approval: { military: 2 } });
+        api.log(`The ${u.name} marches up the Way of Horus to garrison Gaza and Megiddo.`);
+      },
+    },
+    {
+      id: 'forgive',
+      title: 'Accept Their Excuses',
+      cost: 'No tribute this year.',
+      fallout: 'Ma’at −3. Military −3%.',
+      risk: 'Every vassal now knows Pharaoh’s reach is short.',
+      apply(s, api) {
+        s.realms.canaan.relation = Math.min(100, s.realms.canaan.relation + 5);
+        api.fx({ maat: -3, approval: { military: -3 } });
+        api.log('Pharaoh accepts the letters of excuse. In Gezer, they laugh.');
+      },
+    },
+  ],
+};
+
 export const CRISES = [
   hungerFlood,
   famineYear,
@@ -1173,4 +1319,6 @@ export const CRISES = [
   seaPeoples,
   grainRiot,
   coptosFraud,
+  libyanRaid,
+  canaanRevolt,
 ];

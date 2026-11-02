@@ -3,21 +3,81 @@
 //   newGame(seed)            → state (phase 'briefing')
 //   currentEvent(state)      → the briefing's event definition
 //   optionsFor(state)        → resolved options for the current briefing
-//   decree(state, optionId)  → applies the decree   (phase → 'outcome' | 'ended')
-//   advance(state)           → simulates the season (phase → 'briefing' | 'ended')
+//   decree(state, optionId)  → applies the decree   (phase → 'court' | 'ended')
+//   perform(state, id, args) → a royal command from a desk (costs Royal Attention)
+//   advance(state)           → ends the season      (phase → 'briefing' | 'ended')
 //
 // The timeline never advances without a decree (DESIGN.md §1).
 import { createInitialState } from './state.js';
 import { applyEffects } from './effects.js';
-import { endSeason } from './simulate.js';
+import { endSeason, newSeasonCourt } from './simulate.js';
 import { endReign } from './ending.js';
 import { random, chance } from './rng.js';
 import { clamp, resolve } from './util.js';
 import { approval } from './realm.js';
+import { strengthBonus } from './army.js';
 import { EVENTS } from '../content/index.js';
+import { ACTIONS } from '../content/actions.js';
+import { syncArmyBurn } from './army.js';
 
 export function newGame(seed = Date.now()) {
-  return createInitialState(seed);
+  const s = createInitialState(seed);
+  syncArmyBurn(s);
+  newSeasonCourt(s);
+  return s;
+}
+
+function makeApi(state, ctx, chips, lines) {
+  return {
+    ctx,
+    fx: (fx) => chips.push(...applyEffects(state, fx)),
+    log: (text) => lines.push(text),
+    chance: (p) => chance(state, p),
+    random: () => random(state),
+    /** Resolve a battle. base = win probability before the army's condition. */
+    battle: ({ base, stations = null }) => {
+      let p = base + (approval(state, 'military') - 50) / 250 - state.arrears.army * 0.04;
+      if (state.armyRation < 1) p -= 0.05;
+      p += strengthBonus(state, stations);
+      p = clamp(p, 0.1, 0.9);
+      return chance(state, p);
+    },
+    end: (cause, text) => endReign(state, cause, text),
+  };
+}
+
+// ── Royal commands (the desks) ───────────────────────────────────────────
+
+/** Can this command be given now? Returns true or a reason string. */
+export function canPerform(state, id, args = {}) {
+  const a = ACTIONS[id];
+  if (!a) return `Unknown command ${id}`;
+  if (state.phase === 'ended') return 'The reign is over.';
+  const cost = a.cost(state, args);
+  if (cost > state.attention.left) return `Needs ${cost} Royal Attention; ${state.attention.left} left this season.`;
+  if (a.cooldown) {
+    const k = a.key(args);
+    if ((state.cooldowns[k] ?? -1) > state.turn) return `Not again until ${state.cooldowns[k] - state.turn} more season(s) have passed.`;
+  }
+  return a.available ? a.available(state, args) : true;
+}
+
+export function perform(state, id, args = {}) {
+  const ok = canPerform(state, id, args);
+  if (ok !== true) throw new Error(ok);
+  const a = ACTIONS[id];
+  const chips = [];
+  const lines = [];
+  const title = a.label(state, args);
+  state.attention.left -= a.cost(state, args);
+  if (a.cooldown) state.cooldowns[a.key(args)] = state.turn + a.cooldown;
+  a.run(state, args, makeApi(state, {}, chips, lines));
+  const result = { title, lines, chips: chips.filter((c) => c.delta), desk: a.desk };
+  state.commands.push(result);
+  if (a.cost(state, args) >= 2 || ['family.marry', 'court.appoint', 'army.campaign', 'family.designate'].includes(id)) {
+    state.chronicle.push({ turn: state.turn, year: state.year, season: state.season, title, text: lines.join(' ') });
+  }
+  return result;
 }
 
 export function currentEvent(state) {
@@ -54,21 +114,7 @@ export function decree(state, optionId) {
 
   const chips = [];
   const lines = [];
-  const api = {
-    ctx,
-    fx: (fx) => chips.push(...applyEffects(state, fx)),
-    log: (text) => lines.push(text),
-    chance: (p) => chance(state, p),
-    random: () => random(state),
-    /** Resolve a battle. base = win probability before army condition. */
-    battle: ({ base }) => {
-      let p = base + (approval(state, 'military') - 50) / 250 - state.arrears.army * 0.04;
-      if (state.armyRation < 1) p -= 0.05;
-      p = clamp(p, 0.1, 0.9);
-      return chance(state, p);
-    },
-    end: (cause, text) => endReign(state, cause, text),
-  };
+  const api = makeApi(state, ctx, chips, lines);
 
   const title = resolve(opt.title, state, ctx);
   opt.apply(state, api);
@@ -85,12 +131,12 @@ export function decree(state, optionId) {
     text: lines.join(' '),
   });
   if (state.chronicle.length > 60) state.chronicle.splice(0, state.chronicle.length - 60);
-  if (state.phase !== 'ended') state.phase = 'outcome';
+  if (state.phase !== 'ended') state.phase = 'court';
   return state.lastOutcome;
 }
 
 export function advance(state) {
-  if (state.phase !== 'outcome') throw new Error(`Cannot advance during phase "${state.phase}"`);
+  if (state.phase !== 'court') throw new Error(`Cannot end the season during phase "${state.phase}": seal a decree first`);
   state.lastOutcome = null;
   endSeason(state);
   if (state.phase !== 'ended') state.phase = 'briefing';

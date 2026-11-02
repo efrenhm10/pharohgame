@@ -17,18 +17,17 @@
           <span class="brand__title">Horus in the Flesh</span>
           <span class="brand__sub">A political simulation of the Black Land</span>
         </div>
-        <div id="date" class="date" aria-live="polite"></div>
         <div class="topbar__actions">
           <details class="help">
             <summary class="btn btn--ghost">How to rule</summary>
             <div class="help__body">
-              <p>Each season you receive a <strong>Strategic Briefing</strong>: the state of the realm, then either a <strong>Crisis</strong> or an <strong>Opportunity</strong>. Seal one decree, read what the chronicle records, then let the season turn.</p>
+              <p>Each season begins in the <strong>Throne Room</strong> with a Strategic Briefing: a <strong>Crisis</strong> or an <strong>Opportunity</strong>. You must seal one decree before the season can end.</p>
+              <p>Around it, the <strong>desks</strong> let you rule directly: rations and taxes, troops and commanders, your wives and every child’s schooling and marriage, officials, nomes and foreign kings.</p>
               <ul>
-                <li><strong>Ma’at</strong> is your legitimacy as a god. Floods, defeats and hunger break it.</li>
-                <li><strong>Grain</strong> pays everyone at home. <strong>Gold</strong> is for foreign kings.</li>
-                <li>Four power blocks, the <strong>Priesthood</strong>, <strong>Bureaucracy</strong>, <strong>Military</strong> and <strong>Harem</strong>, turn dangerous as their approval falls.</li>
+                <li>Orders cost <strong>Royal Attention ⚡</strong>, about 3 a season. Standing orders (rations, taxes, palace) are free.</li>
+                <li><strong>Ma’at</strong> is your legitimacy as a god. <strong>Grain</strong> pays everyone at home; <strong>gold</strong> is for foreign kings.</li>
                 <li>Storing grain in good years unlocks <strong>Prepared</strong> options in bad ones.</li>
-                <li>Keys: <kbd>1</kbd>–<kbd>4</kbd> seal a decree, <kbd>Enter</kbd> turns the season.</li>
+                <li>Keys: <kbd>1</kbd>–<kbd>4</kbd> seal a decree, <kbd>Enter</kbd> ends the season.</li>
               </ul>
               <p class="muted">Your reign is saved in this browser automatically.</p>
             </div>
@@ -41,13 +40,14 @@
         <button class="btn btn--primary" type="button" data-confirm="yes">Begin again</button>
         <button class="btn btn--ghost" type="button" data-confirm="no">Keep ruling</button>
       </div>
+      <div id="hud" class="hud" aria-live="polite"></div>
+      <nav id="dock" class="dock" aria-label="Desks"></nav>
     </header>
     <div id="error" class="error" role="alert" hidden></div>
 
-    <main class="layout">
-      <div id="briefing" class="layout__main"></div>
-      <aside id="sidebar" class="layout__side" aria-label="The court"></aside>
-    </main>
+    <main id="view" class="view"></main>
+    <div id="mbar" class="mbar"></div>
+    <div id="toasts" class="toasts" aria-live="polite"></div>
 
     <noscript><p class="panel">This game needs JavaScript.</p></noscript>
     <script type="module" src="src/main.js"></script>

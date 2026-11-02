@@ -325,7 +325,43 @@ to spend Surplus. Hoarding it is always one legitimate option.
 
 ---
 
-## 9. Design Pillars (checklist for every mechanic and event)
+## 9. The Royal Desks (Direct Rule)
+
+The season's decree is not the only thing Pharaoh does. Around the Throne Room,
+**desks** let the player rule directly, in the spirit of a ministry-by-ministry
+grand strategy game. The season ends only when the player chooses, and only after
+the decree is sealed.
+
+**Royal Attention ⚡** is the limit: 3 points a season, +1 with a Vizier of
+Competence 70+, −1 when Pharaoh's health is below 35. Standing orders (rations,
+palace, taxes, troop stations) are free; personal orders cost 1–2.
+
+| Desk | What the player controls | What it trades against |
+|---|---|---|
+| 🌾 Granaries | Army / workforce rations, palace household, tax quota; seal and open reserves; buy grain abroad; feed the people; borrow from Karnak | Rations cut burn but sap morale and slow the tomb; heavy taxes cost nome loyalty and Ma'at; Karnak's loan must be repaid +10% |
+| ⚔️ Army | Seven units (the divisions of Amun, Ra, Ptah and Seth, the Chariot Corps, the Medjay, the Sherden). Each has men, quality, morale, commander and station. Recruit, discharge, drill, reward, appoint commanders (generals or sons), station troops, campaign in Canaan, Libya or Kush | Every 1,000 men eat 5,000 khar a month; a disloyal, ambitious commander with troops at the capital rolls for a coup every season; stations decide which battles you can win |
+| 🪷 Royal Family | Every wife: favor (and conception), estates, elevation to Great Royal Wife, banishment, new marriages from nomes, generals, foreign courts or the harem. Every child: schooling (the Kap, the House of Life, the chariot stables, Karnak), marriage into Nomarch houses, to generals, to foreign kings (breaking the taboo on sending Egyptian princesses abroad), to the Crown Prince, or consecration as God's Wife of Amun; naming the heir; making a son High Priest of Ptah | Every favor to one mother is an insult to the others; married children give their in-laws a claim on the throne |
+| 🏛️ Court | Viziers of the South and North, High Priest of Amun, Overseer of the Granaries, Viceroy of Kush, each with Competence, Integrity, Ambition and Loyalty. Summon a shortlist of three, appoint (or appoint an adult son), reward | Vizier integrity sets leakage; the Overseer sets spoilage; the Viceroy sets Nubian gold; the High Priest's loyalty pulls Karnak toward or away from the throne |
+| 🗺️ Two Lands | Eight great nomes, each with a Nomarch, loyalty, heredity and harvest share. Audit, royal progress, confirm or revoke heredity, replace the Nomarch, dig canals | Disloyal nomes under-report their harvest (−10% to −25%); audits find grain but cost loyalty; heredity buys loyalty with a permanent cut in yield |
+| 🌍 Foreign Courts | Hatti, Babylon, Assyria, Alashiya, the Canaanite vassals, the Libu. Gifts, trade (horses, copper, silver, lapis), tribute, royal brides | Gold buys relations; tribute needs a garrison; hostile Libu and an empty western frontier bring raids |
+| 🧱 Monuments | Start, pause and resume building projects, including forts and granaries that change the rules | Crews eat grain every month; pausing costs Ma'at and Priesthood favor |
+
+Desk effects feed back into the briefings: station-aware crises (Libyan raids,
+Canaanite revolt) appear when the frontier is bare, coups are led by whoever
+actually commands the troops at the capital, and battle odds use the real strength
+of the units stationed nearby.
+
+### Portraits
+Every person is drawn procedurally in the conventions of Egyptian painting:
+red-ochre men and golden women, kohl-lined eyes, broad collars, and a headdress
+that marks rank. Examples: Pharaoh's nemes with the uraeus and false beard, the
+Great Royal Wife's vulture crown and plumes, the perfume cone of court ladies,
+the sidelock of youth, priests' shaved heads and leopard skins, the Vizier's high
+robe, a Hittite queen's tall hat.
+
+---
+
+## 10. Design Pillars (checklist for every mechanic and event)
 
 1. Does it make divinity feel **fragile** — can it cost Ma'at?
 2. Does it force a choice **between power blocks**? (In Opportunities: who gets the credit?)
@@ -333,3 +369,4 @@ to spend Surplus. Hoarding it is always one legitimate option.
 4. Is it paid in **grain** (domestic) or **gold** (foreign) — and is that the right one?
 5. Does it plant a **delayed consequence** rather than resolving cleanly?
 6. Does the **pacing** give the player room to enjoy success before the next fire (§8)?
+7. Can the player **act on it directly** from a desk, and does doing so cost Royal Attention or provoke someone (§9)?
