@@ -36,7 +36,13 @@
           <button id="new-game" class="btn btn--ghost" type="button">New reign</button>
         </div>
       </div>
+      <div id="confirm-new" class="confirm" role="alertdialog" aria-label="Start a new reign" hidden>
+        <span>Abandon this reign and begin again in Year 9? Your current reign will be lost.</span>
+        <button class="btn btn--primary" type="button" data-confirm="yes">Begin again</button>
+        <button class="btn btn--ghost" type="button" data-confirm="no">Keep ruling</button>
+      </div>
     </header>
+    <div id="error" class="error" role="alert" hidden></div>
 
     <main class="layout">
       <div id="briefing" class="layout__main"></div>

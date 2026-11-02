@@ -83,9 +83,17 @@ kbd {
 }
 
 /* top bar */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0 0 auto;
+  height: env(safe-area-inset-top, 0px);
+  z-index: 10;
+  background: var(--panel);
+}
 .topbar {
   position: sticky;
-  top: 0;
+  top: env(safe-area-inset-top, 0px);
   z-index: 10;
   background: var(--panel);
   border-bottom: 2px solid var(--gold);
@@ -94,7 +102,9 @@ kbd {
 .topbar__inner {
   max-width: 1320px;
   margin: 0 auto;
-  padding: 0.6rem 16px;
+  padding-block: 0.6rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -147,11 +157,38 @@ kbd {
 }
 .help__body ul { padding-left: 1.1rem; margin: 0 0 0.75rem; }
 
+/* in-page confirmation & errors */
+.confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding-block: 0.6rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  border-top: 1px solid var(--line);
+}
+.confirm span { flex: 1 1 260px; }
+.error {
+  max-width: 1320px;
+  margin: 1rem auto 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--bad);
+  border-radius: var(--radius);
+  color: var(--bad);
+  background: var(--panel);
+}
+[hidden] { display: none !important; }
+
 /* layout */
 .layout {
   max-width: 1320px;
   margin: 0 auto;
-  padding: 1rem 16px 3rem;
+  padding-block: 1rem 3rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: 1rem;

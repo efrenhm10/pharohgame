@@ -6,6 +6,8 @@ const SAVE_KEY = 'horus-in-the-flesh/save-v1';
 const $main = document.getElementById('briefing');
 const $side = document.getElementById('sidebar');
 const $date = document.getElementById('date');
+const $confirm = document.getElementById('confirm-new');
+const $error = document.getElementById('error');
 
 let state = load() || newGame(Date.now());
 
@@ -39,11 +41,13 @@ function render({ scroll = true } = {}) {
 }
 
 function act(fn) {
+  $error.hidden = true;
   try {
     fn();
   } catch (err) {
     console.error(err);
-    alert(`The scribes made an error: ${err.message}`);
+    $error.textContent = `Something went wrong: ${err.message}. Your reign is saved. Reload the page to continue.`;
+    $error.hidden = false;
   }
   render();
 }
@@ -67,11 +71,21 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// "New reign" asks for confirmation in the page itself (browser dialogs are not available everywhere).
 document.getElementById('new-game').addEventListener('click', () => {
-  if (state.phase === 'ended' || confirm('Abandon this reign and begin again in Year 9?')) startNew();
+  if (state.phase === 'ended') return startNew();
+  $confirm.hidden = false;
+  $confirm.querySelector('[data-confirm="no"]').focus();
+});
+$confirm.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-confirm]');
+  if (!b) return;
+  $confirm.hidden = true;
+  if (b.dataset.confirm === 'yes') startNew();
 });
 
 function startNew() {
+  $confirm.hidden = true;
   state = newGame(Date.now());
   render();
 }
