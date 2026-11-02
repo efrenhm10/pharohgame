@@ -20,7 +20,7 @@ The year follows the three Egyptian seasons. Each season is one turn.
 |---|---|---|
 | **Akhet** (Inundation) | Jul–Oct | Flood height read at the Nilometers. Sets the harvest. Fields underwater → peasants free for corvée (monument labor). |
 | **Peret** (Growing) | Nov–Feb | Fields planted. Tax assessment by scribes. Campaign season opens in Syria-Canaan. |
-| **Shemu** (Harvest) | Mar–Jun | Grain collected into granaries. Tax fraud, skimming and revolts peak. |
+| **Shemu** (Harvest) | Mar–Jun | The harvest is cut and the Nubian gold tribute arrives. Tax fraud, skimming and revolts peak. |
 
 Per turn:
 1. **Simulate** — grain burn, flood/harvest, power-block drift, plots advance, health ages.
@@ -45,6 +45,8 @@ The timeline **never advances without a player decree**.
 
 **Breaks Ma'at:** low or catastrophic flood, plague, lost battle, unpaid laborers, desecrated tombs, a monument abandoned unfinished, a royal heir dying suspiciously.
 **Restores Ma'at:** good flood (credited to the king), victory, completed monuments, festivals (Opet, Sed), visible justice against corrupt officials, grain distribution in famine.
+
+**Upkeep:** while Ma'at is below 50, every season in which all rations are paid restores +1 (the rites were performed and the people fed). Above 80, Ma'at decays −1 per season: a golden age needs constant maintenance.
 
 Ma'at is a *perception*. The Priesthood controls its interpretation: high Priesthood
 approval softens Ma'at losses; hostile priests amplify them.
@@ -88,12 +90,16 @@ The roll draws a band from the Ma'at-weighted odds below, then a height within t
 ### Grain math
 
 ```
-Royal harvest intake (Shemu) = Baseline intake × flood modifier × (1 − scribal leakage)
+Seasonal tax intake          = Baseline intake ÷ 3 × flood modifier × (1 − scribal leakage)
 Monthly burn                 = army + royal workforce + palace/administration + monument crews
 Reserve (months)             = Royal granaries ÷ monthly burn
 ```
 
-- **Baseline intake** is set per scenario (the Year 9 start uses 2,300,000 khar/year).
+- **Tax arrives in three seasonal installments** by barge, so a bad flood squeezes the whole year
+  instead of emptying the granaries for two seasons at a time.
+- **Baseline intake** is set per scenario. The Year 9 start uses 3,000,000 khar/year against a
+  2,280,000 khar/year burn: a normal year runs a small surplus, a Blessing a large one, a Famine a
+  deep deficit. Permanent concessions (temple exemptions, nomarch heredity) eat into that margin.
 - **Scribal leakage** runs from 2% to 15%. It is set by the Vizier's Integrity and
   Bureaucracy approval (§4).
 
@@ -276,8 +282,13 @@ spiral has to be earned.
 ### 8.2 Pacing guardrails
 - **Respite rule:** after a major crisis is resolved with Ma'at still ≥ 25, the next
   turn is an Opportunity, unless a matured crisis forces otherwise. Survival earns a breath.
+- **Hard cap: never more than 4 crises in a row**, whatever Ma'at is, except for existential
+  threats (a march on the palace, a poison plot, the Oracle of Amun). Even a collapsing realm
+  gets a breath.
 - **No more than 2 crises in a row**, unless Ma'at < 25 or the player ignored an omen
   that then matured. A death spiral may come only from the player's own choices.
+  Lesser forced crises (famine, deluge, strikes, riots) wait in the queue for a turn
+  rather than break this rule.
 - **No more than 3 Opportunities in a row.** On the third, an Omen must be close to
   maturing, so prosperity never feels permanent.
 - **Target rhythm at healthy Ma'at:** about 1 Opportunity for every 2 Crises.

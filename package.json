@@ -1,0 +1,14 @@
+{
+  "name": "pharohgame",
+  "version": "0.1.0",
+  "description": "Horus in the Flesh: a Bronze Age political simulation of New Kingdom Egypt.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node scripts/serve.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

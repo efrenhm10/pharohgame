@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Horus in the Flesh</title>
+    <meta name="description" content="A Bronze Age political simulation: rule New Kingdom Egypt as Pharaoh and hold on to Ma'at, your granaries and your bloodline." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar__inner">
+        <div class="brand">
+          <span class="brand__title">Horus in the Flesh</span>
+          <span class="brand__sub">A political simulation of the Black Land</span>
+        </div>
+        <div id="date" class="date" aria-live="polite"></div>
+        <div class="topbar__actions">
+          <details class="help">
+            <summary class="btn btn--ghost">How to rule</summary>
+            <div class="help__body">
+              <p>Each season you receive a <strong>Strategic Briefing</strong>: the state of the realm, then either a <strong>Crisis</strong> or an <strong>Opportunity</strong>. Seal one decree, read what the chronicle records, then let the season turn.</p>
+              <ul>
+                <li><strong>Ma’at</strong> is your legitimacy as a god. Floods, defeats and hunger break it.</li>
+                <li><strong>Grain</strong> pays everyone at home. <strong>Gold</strong> is for foreign kings.</li>
+                <li>Four power blocks, the <strong>Priesthood</strong>, <strong>Bureaucracy</strong>, <strong>Military</strong> and <strong>Harem</strong>, turn dangerous as their approval falls.</li>
+                <li>Storing grain in good years unlocks <strong>Prepared</strong> options in bad ones.</li>
+                <li>Keys: <kbd>1</kbd>–<kbd>4</kbd> seal a decree, <kbd>Enter</kbd> turns the season.</li>
+              </ul>
+              <p class="muted">Your reign is saved in this browser automatically.</p>
+            </div>
+          </details>
+          <button id="new-game" class="btn btn--ghost" type="button">New reign</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <div id="briefing" class="layout__main"></div>
+      <aside id="sidebar" class="layout__side" aria-label="The court"></aside>
+    </main>
+
+    <noscript><p class="panel">This game needs JavaScript.</p></noscript>
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
