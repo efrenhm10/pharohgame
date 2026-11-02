@@ -7,7 +7,7 @@ ruler surrounded by temples, generals, governors and wives who all want his powe
 This is **not** a city-builder and **not** a chronological "age-up" event loop.
 Every turn is a **Strategic Briefing**: the state of the realm, then either one
 systemic **Crisis** or one **Opportunity**, and 3–4 decrees, each with an explicit
-cost and an explicit consequence for factions and the bloodline. Crises test the
+cost and an explicit consequence for the power blocks and the bloodline. Crises test the
 empire; opportunities let the player build it (§8).
 
 ---
@@ -23,7 +23,7 @@ The year follows the three Egyptian seasons. Each season is one turn.
 | **Shemu** (Harvest) | Mar–Jun | Grain collected into granaries. Tax fraud, skimming and revolts peak. |
 
 Per turn:
-1. **Simulate** — grain burn, flood/harvest, faction drift, plots advance, health ages.
+1. **Simulate** — grain burn, flood/harvest, power-block drift, plots advance, health ages.
 2. **Brief** — pick the briefing type from the rotation rules (§8), then render the Strategic Briefing Dashboard (§7).
 3. **Decree** — player picks one option or issues a custom counter-proposal.
 4. **Resolve** — apply costs, fallout, and seed future consequences (delayed effects are the norm).
@@ -49,15 +49,53 @@ The timeline **never advances without a player decree**.
 Ma'at is a *perception*. The Priesthood controls its interpretation: high Priesthood
 approval softens Ma'at losses; hostile priests amplify them.
 
-### Flood table (cubits at Elephantine)
+## 2a. The Flood Table & Grain Math (Cubits at Elephantine)
 
-| Reading | Name | Harvest | Ma'at |
-|---|---|---|---|
-| < 12 | Cubits of Hunger | 40–55% | −15 |
-| 12–14 | Low Hapi | 60–80% | −6 |
-| 15–16 | Good Hapi | 100% | +4 |
-| 17–18 | High Hapi | 110% | +2 |
-| > 19 | Destroying Flood | 70% (dykes and villages lost) | −8 |
+At the start of every Akhet, a **hidden roll** modified by current Ma'at sets the
+Nile flood height. The scribes read it at the Nilometer, and the player learns the
+result in that turn's briefing.
+
+| Height (Cubits) | Nile Status | Immediate Grain Impact | Political & Ma'at Fallout |
+| :--- | :--- | :--- | :--- |
+| **< 12** | *The Famine (Low Flood)* | −50% harvest | **Isfet rises (−15 Ma'at).** Peasant strikes trigger. The Priesthood's demand becomes *emergency grain distribution*. |
+| **12 to < 15** | *The Lean Year* | −15% harvest | No immediate Ma'at loss, but granary reserves must be tapped. Nomarchs and vassals grow restless (−5 Bureaucracy approval). |
+| **15 to < 17** | *The Blessing (Perfect)* | +25% harvest | **Ma'at upheld (+10 Ma'at).** Monument labor costs −20% this year because morale is high. |
+| **17 to 18** | *The High Water* | Normal harvest | Minor canal and dyke damage. It must be repaired with gold or corvée labor, or next year's harvest takes −10%. |
+| **> 18** | *The Deluge (Destruction)* | −30% harvest | **Isfet rises (−10 Ma'at).** Towns flooded and sacred temples damaged. Order depends on the military: Military approval counts double this year. |
+
+### The hidden roll
+
+The roll draws a band from the Ma'at-weighted odds below, then a height within that band.
+
+| Current Ma'at | Famine | Lean | Blessing | High Water | Deluge |
+|---|---|---|---|---|---|
+| 80–100 | 5% | 20% | 45% | 22% | 8% |
+| 50–79 | 10% | 30% | 35% | 18% | 7% |
+| 25–49 | 15% | 35% | 28% | 15% | 7% |
+| 0–24 | 20% | 37% | 22% | 13% | 8% |
+
+- **Feedback dampener.** Ma'at only *tilts* the odds. Even a hated king gets a
+  Blessing about one year in five, and a beloved one still suffers Famine. Without
+  this, low Ma'at would cause bad floods, which lower Ma'at further, in a spiral
+  the player cannot escape.
+- **Famine streak cap:** after two Famines in a row, the Famine chance is halved
+  until a non-Famine year.
+- **The Deluge ignores Ma'at.** The gods' wrath can fall on anyone.
+- **Forecasts.** The Elephantine priests can be asked, for a favor or a gift, to
+  "read the southern waters" one season early. The answer reveals the likely band
+  as an Omen (§8), which lets the player prepare.
+
+### Grain math
+
+```
+Royal harvest intake (Shemu) = Baseline intake × flood modifier × (1 − scribal leakage)
+Monthly burn                 = army + royal workforce + palace/administration + monument crews
+Reserve (months)             = Royal granaries ÷ monthly burn
+```
+
+- **Baseline intake** is set per scenario (the Year 9 start uses 2,300,000 khar/year).
+- **Scribal leakage** runs from 2% to 15%. It is set by the Vizier's Integrity and
+  Bureaucracy approval (§4).
 
 ---
 
@@ -83,49 +121,54 @@ skimming, set by the Vizier's integrity and the Nomarch's loyalty.
 
 ---
 
-## 4. The Three Factions
+## 4. The Four Power Blocks
 
-Each faction has `Approval` (0–100%), an active `Demand`, a `Leader` (a character
-with ambitions, not an abstraction), and a `Threat` behavior when approval falls.
+The player must manage four power blocks. Each has an `Approval` rating (0–100%),
+an active `Demand`, a `Leader` (a named character with ambitions, not an abstraction),
+and escalating `Threat` behavior as approval falls.
 
-### The Priesthood (Temples)
-- **Holds:** temple granaries, land, the oracle, the interpretation of omens and Ma'at.
-- **Wants:** tax-exempt estates, monument endowments, hereditary high priesthoods.
-- **Threat at low approval:** declares omens against the king, withholds temple grain, uses the oracle to back a rival heir. End state: a Theban theocracy.
+### 🏛️ The Amun-Ra Priesthood (The Theban Temples)
+- **Controls:** religious legitimacy, the interpretation of Ma'at and omens, and huge tax-exempt temple granaries and estates.
+- **Wants:** new temples, preservation of their tax exemptions, hereditary high priesthoods, and a **veto over the chosen heir**.
+- **Threat:**
+  - **< 50%:** omens are read against the king, Ma'at losses are amplified ×1.5, and temple grain is withheld.
+  - **< 30%:** **Divine Oracle.** Amun "declares" that the gods are displeased with Pharaoh and may name a rival claimant. This sparks a **religious civil war** if Ma'at is under 50.
 
-### The Military (Chariotry, infantry, Sherden/Nubian/Libyan mercenaries)
-- **Holds:** force. Defends against Hittites, Libyans, Sea Peoples, Nubian revolts.
-- **Wants:** grain paid on time, campaigns with booty, princes and favorites in command.
-- **Threat at low approval:** refuses to march, mutiny, a general-prince seizes the throne. Foreign mercenaries switch sides fastest when unpaid.
+### 🦩 The Nomarchs & Viziers (The Bureaucracy)
+- **Controls:** collecting the grain tax during Shemu and drafting peasants for corvée during Akhet. The two Viziers (North at Memphis/Pi-Ramesses, South at Thebes) lead the scribal network. Each is a character with `Competence`, `Integrity` and `Ambition`.
+- **Wants:** hereditary rights to their governorships, low tax quotas, and freedom from the Viziers' audits (Nomarchs). The Viziers want more delegated power.
+- **Threat:**
+  - **< 50%:** scribal leakage rises and harvest reports are under-counted.
+  - **< 30%:** grain taxes are pocketed outright and corvée quotas are missed.
+  - **< 15% and Ma'at < 50:** nomes declare **independent regional dynasties**, and Egypt slides toward an Intermediate Period.
+- **Vizier paradox:** delegating power to a Vizier raises tax efficiency *and* his capacity to plot. High Competence plus high Ambition makes him the most useful and the most dangerous man in Egypt.
 
-### The Nomarchs (Regional Governors)
-- **Holds:** local labor, harvests, nome granaries, the corvée.
-- **Wants:** heredity of office, tax remission, autonomy from the Vizier's scribes.
-- **Threat at low approval:** under-report harvests, hoard grain, refuse corvée; at worst Egypt fragments into nomes (an "Intermediate Period").
+### ⚔️ The Chariot Corps & Mercenaries (The Military)
+- **Controls:** foreign conquest, border security against the Hittites, Libyans and Sea Peoples, and domestic policing. Includes the Sherden and Nubian Medjay mercenaries.
+- **Wants:** aggressive campaigns in Syria-Canaan that bring gold and captives, a high military grain budget, and princes or favorites in command.
+- **Threat:**
+  - **< 50%:** units refuse to march. Unpaid mercenaries desert or switch sides first.
+  - **< 30%:** a charismatic general or a **disaffected royal prince** may march on the palace in a **military coup**. The chance is checked each turn and rises with months of unpaid arrears.
 
-**Rule:** every crisis must force a trade between at least two of these factions.
-No option pleases everyone.
+### 🪷 The Harem (The Royal Dynasty)
+- **Controls:** palace security, access to Pharaoh's person (food tasters, guards, chamber servants), and the immediate line of succession.
+- **Wants:** each mother wants **her own son** named Crown Prince over the sons of rival wives.
+- **How approval works:** the bloc's Approval is the influence-weighted average of each wife's satisfaction. **Conspiracies are triggered by individual wives, not by the average.** A harem that is calm overall can still hide one mother with nothing left to lose.
+- **Each wife has:** `Origin` (foreign treaty / Nomarch family / priestly family / commoner), `Influence`, `Ambition`, `Allies` (eunuchs, viziers, generals, priests), and her sons.
+  - The **Great Royal Wife** has ritual status, and her son has the strongest default claim.
+  - **Foreign wives** carry a treaty. Insulting them or their sons strains that alliance.
+  - **Nomarch-family wives** tie a nome's grain to their son's prospects.
+- **Threat:** when an individual wife's satisfaction drops below 30%, especially if her son has been passed over, she begins a **Harem Conspiracy**. She recruits guards and food tasters to poison Pharaoh, or arranges the death of a rival heir (cf. the conspiracy against Ramesses III). The plot advances silently each turn and surfaces as a crisis, or as a death.
+
+**Rule:** every crisis must force a trade between at least two power blocks. No option pleases everyone.
 
 ---
 
-## 5. The Court: Vizier, Harem, Succession
-
-### The Vizier(s)
-Two viziers (North at Memphis/Pi-Ramesses, South at Thebes) run the scribes, courts and taxes.
-Stats: `Competence`, `Integrity`, `Ambition`. High competence + high ambition = the most useful and most dangerous man in Egypt.
-Delegating more power raises tax efficiency and plot capacity simultaneously.
-
-### The Harem
-Each wife is a political actor with: `Origin` (foreign treaty / Nomarch family / priestly family / commoner), `Influence`, `Ambition`, `Allies` (eunuchs, viziers, generals, priests), and her sons.
-- The **Great Royal Wife** has ritual status; her son has the strongest default claim.
-- **Foreign wives** carry a treaty: insulting them or their sons strains that alliance.
-- **Nomarch-family wives** tie a nome's grain to their son's prospects.
-
-### Succession
+## 5. Succession
 There is no automatic law. The heir is whoever Pharaoh **designates** and can make stick.
 Each son has `Legitimacy` (birth, mother's rank, Amun's favor, public rites) and `Loyalty` (to the reigning king).
-Co-regency, oracle confirmation, military command and marriage to a royal daughter all shift Legitimacy.
-Plots (poisoning, forged decrees, harem conspiracies — cf. the Harem Conspiracy against Ramesses III) progress silently and surface as crises.
+Co-regency, oracle confirmation (the Priesthood's veto), military command and marriage to a royal daughter all shift Legitimacy.
+Plots (poisoning, forged decrees, harem conspiracies) progress silently and surface as crises.
 
 ---
 
@@ -141,6 +184,7 @@ Monuments are political currency, paid in grain, corvée labor and time.
 | Royal tomb (Valley of the Kings) | Ongoing crew | Whole reign | Required. Dying with it unfinished: heir starts −15 Legitimacy |
 
 Corvée is cheapest in Akhet (fields flooded). Pulling labor in Shemu cuts the harvest.
+A Blessing flood cuts monument labor costs by 20% for that year (§2a).
 Abandoning a monument costs Ma'at and Priesthood approval.
 
 ---
@@ -160,7 +204,8 @@ briefing is either a **Crisis Decree** (7a) or an **Opportunity Briefing** (7b).
 *   **Faction Support:**
     *   *The Priesthood / Church:* [X]% Approval (Current Demands: [...])
     *   *The Military / Nobles:* [X]% Approval (Current Demands: [...])
-    *   *The Nomarchs / Vassals:* [X]% Approval (Current Demands: [...])
+    *   *The Nomarchs & Viziers / Bureaucracy:* [X]% Approval (Current Demands: [...])
+    *   *The Harem / Dynasty:* [X]% Approval (Most dangerous wife: [name, satisfaction %, her son])
 
 ### ⚡ CURRENT CRISIS DECREE
 [One systemic political standoff: who threatens whom, what is at stake, why it matters to the bloodline.]
@@ -218,8 +263,9 @@ roll against the **Opportunity chance**:
 |---|---|
 | Base | 30% |
 | Ma'at 80+ / 50–79 / 25–49 / <25 | +25% / +10% / −10% / −25% |
-| Good or High Hapi this year | +20% |
-| Cubits of Hunger or Destroying Flood this year | Crisis forced |
+| Blessing flood this year | +20% |
+| Lean Year | −5% |
+| Famine or Deluge this year | Crisis forced |
 | A seeded crisis has matured (plot, invasion, unpaid arrears ≥ 3 months) | Crisis forced |
 | Previous turn resolved a major crisis | Respite rule (8.2) |
 
@@ -245,7 +291,7 @@ to spend Surplus. Hoarding it is always one legitimate option.
 
 | Opportunity | Typical options |
 |---|---|
-| **Perfect Hapi** (a 15–16 cubit flood and a harvest surplus) | Raise a monument · hold an Opet festival · fill the granaries for the lean years · remit taxes to the nomes |
+| **The Blessing** (a 15–16 cubit flood and a +25% harvest) | Raise a monument · hold an Opet festival · fill the granaries for the lean years · remit taxes to the nomes |
 | **The Punt Expedition returns** (incense, myrrh trees, ebony, electrum, panther skins) | Plant the myrrh terraces at Amun's temple · gift the electrum to foreign courts · reward the expedition's admiral and nome · hold the incense for the Sed festival |
 | **A foreign princess arrives** (from Babylon or Mitanni, with a dowry) | Raise her above existing wives · marry her into a prince's household · seclude her and keep her dowry · use her to strengthen a treaty |
 | **A son is born** | Name him in a temple rite · foster him with a Nomarch family · promise him to a priesthood · keep him hidden from harem rivals |
@@ -271,7 +317,7 @@ to spend Surplus. Hoarding it is always one legitimate option.
 ## 9. Design Pillars (checklist for every mechanic and event)
 
 1. Does it make divinity feel **fragile** — can it cost Ma'at?
-2. Does it force a choice **between factions**? (In Opportunities: who gets the credit?)
+2. Does it force a choice **between power blocks**? (In Opportunities: who gets the credit?)
 3. Does it touch the **bloodline** — an heir, a wife, a marriage alliance?
 4. Is it paid in **grain** (domestic) or **gold** (foreign) — and is that the right one?
 5. Does it plant a **delayed consequence** rather than resolving cleanly?
