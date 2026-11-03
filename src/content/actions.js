@@ -363,26 +363,32 @@ export const ACTIONS = {
   'family.educate': {
     desk: 'family',
     cost: () => 1,
-    label: (s, a) => `Send ${child(s, a.childId)?.name} to ${SCHOOLS[a.school].name}`,
+    label: (s, a) => `${(child(s, a.childId)?.age ?? 0) > 15 ? 'Train' : 'Send'} ${child(s, a.childId)?.name} ${(child(s, a.childId)?.age ?? 0) > 15 ? 'at' : 'to'} ${SCHOOLS[a.school]?.name}`,
     available(s, a) {
       const c = child(s, a.childId);
-      if (!c) return 'No such child.';
-      if (c.edu) return 'Already educated.';
-      if (c.age < 4 || c.age > 15) return 'Children are schooled between 4 and 15.';
       const sc = SCHOOLS[a.school];
-      if (sc.minAge && c.age < sc.minAge) return `Too young for ${sc.name}.`;
-      if (sc.sons && c.sex !== 'm') return 'The chariot stables take only sons.';
+      if (!c || c.abroad) return 'No such prince or princess.';
+      if (!sc) return 'Choose a school.';
+      if (c.edu === a.school) return 'Already trained there.';
+      if (c.age < 4) return 'Too young for school (4).';
+      if (sc.minAge && c.age < sc.minAge) return `Too young for ${sc.name} (${sc.minAge}).`;
+      if (sc.maxAge && c.age > sc.maxAge) return `${sc.name} is for children.`;
+      if (c.age > 15 && s.gold < 100) return 'Training an adult costs 100 deben.';
       return true;
     },
     run(s, a, api) {
       const c = child(s, a.childId);
       const sc = SCHOOLS[a.school];
+      const adult = c.age > 15;
       c.edu = a.school;
       c.skill = sc.skill;
       const fx = { ...sc.fx };
-      if (a.school === 'kap' && c.sex === 'm') fx.sons = { [c.id]: { loyalty: 10 } };
+      if (adult) fx.gold = -100;
+      if (a.school === 'kap' && c.legitimacy != null) fx.sons = { [c.id]: { loyalty: 10 } };
       api.fx(fx);
-      api.log(`${c.sex === 'm' ? 'Prince' : 'Princess'} ${c.name} is sent to ${sc.name}.`);
+      api.log(adult
+        ? `${c.sex === 'm' ? 'Prince' : 'Princess'} ${c.name} spends the season training at ${sc.name}. Their old skills give way to new ones.`
+        : `${c.sex === 'm' ? 'Prince' : 'Princess'} ${c.name} is sent to ${sc.name}.`);
     },
   },
   'family.marry': {

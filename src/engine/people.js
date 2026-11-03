@@ -27,9 +27,9 @@ export const TRAITS = {
 const TRAIT_KEYS = Object.keys(TRAITS).filter((k) => k !== 'frail');
 
 export const SCHOOLS = {
-  kap: { name: 'The Kap (royal nursery school)', skill: 'statecraft', note: 'Raised beside the heir. Loyalty to the crown +10.', fx: {} },
+  kap: { name: 'The Kap (royal nursery school)', skill: 'statecraft', note: 'Raised beside the heir (children only). Loyalty to the crown +10.', fx: {}, maxAge: 15 },
   scribe: { name: 'House of Life at Memphis', skill: 'administration', note: 'Scribal training. Bureaucracy +2%.', fx: { approval: { bureaucracy: 2 } } },
-  chariot: { name: 'The Chariot Corps stables', skill: 'martial', note: 'A soldier’s training (age 10+). Military +3%.', fx: { approval: { military: 3 } }, minAge: 10, sons: true },
+  chariot: { name: 'The Chariot Corps stables', skill: 'martial', note: 'A charioteer’s training (age 10+). Military +3%; trained princes command far better.', fx: { approval: { military: 3 } }, minAge: 10 },
   temple: { name: 'Temple of Amun at Karnak', skill: 'piety', note: 'Raised among priests. Priesthood +3%.', fx: { approval: { priesthood: 3 } } },
 };
 
@@ -47,6 +47,22 @@ const ORIGINS = {
   army: { label: 'A veteran officer', kind: 'general', fx: { military: 6 }, integrity: [45, 75], competence: [40, 70], ambition: [35, 70], loyalty: [50, 80] },
 };
 const roll = (state, [a, b]) => Math.round(a + random(state) * (b - a));
+
+/** Three would-be generals: a veteran, a noble's son, a foreign captain. */
+export function generalCandidates(state) {
+  const kinds = [
+    { origin: 'veteran', label: 'A veteran officer of the divisions', martial: [55, 75], loyalty: [55, 80], ambition: [25, 55] },
+    { origin: 'noble', label: 'A Nomarch’s son, well connected', martial: [40, 65], loyalty: [40, 70], ambition: [55, 85] },
+    { origin: 'foreign', label: 'A Sherden mercenary captain', martial: [65, 85], loyalty: [25, 55], ambition: [35, 70] },
+  ];
+  const used = new Set(state.army.generals.map((g) => g.name));
+  return kinds.map((k) => {
+    let name = pickFrom(state, k.origin === 'foreign' ? ['Kerdenu', 'Shardana-Ibi', 'Tursha', 'Akawash', 'Luku', 'Sheklesh'] : MALE_NAMES);
+    while (used.has(name)) name = `${name}-${Math.floor(random(state) * 9) + 1}`;
+    used.add(name);
+    return { id: newId(state, 'gen'), kind: 'general', seed: seedNum(state), name, title: 'General', age: 28 + Math.floor(random(state) * 22), martial: roll(state, k.martial), loyalty: roll(state, k.loyalty), ambition: roll(state, k.ambition), origin: k.origin, originLabel: k.label };
+  });
+}
 
 /** Three candidates for an office, plus any adult sons who could hold it. */
 export function candidates(state, office) {

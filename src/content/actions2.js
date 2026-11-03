@@ -5,7 +5,7 @@ import { son, child as anyChild, isAdult, wife } from '../engine/realm.js';
 import { unit, units, syncArmyBurn } from '../engine/army.js';
 import { province, reachable, frontOf, newWar, peaceTerms, makePeace, provinceValue, egyptProvinces, building } from '../engine/world.js';
 import { spyOn, targetName, SPY_TARGETS } from '../engine/spies.js';
-import { MALE_NAMES, FEMALE_NAMES, seedNum } from '../engine/people.js';
+import { MALE_NAMES, FEMALE_NAMES, seedNum, generalCandidates } from '../engine/people.js';
 import { NOME_BUILDINGS, PROVINCE_BUILDINGS, EXPEDITIONS, REGIONS } from './world.js';
 
 const nome = (s, id) => s.nomes.find((n) => n.id === id);
@@ -92,6 +92,54 @@ export const MORE_ACTIONS = {
       n.loyalty = clamp(n.loyalty - 12, 0, 100);
       api.fx({ grain: amount, maat: -1, approval: { bureaucracy: -2 } });
       api.log(`Royal scribes empty the storehouses of ${n.name}: ${fmt(amount)} khar for the crown. Nomarch ${n.nomarch} smiles, and remembers.`);
+    },
+  },
+
+  // 🎖️ GENERALS ─────────────────────────────────────────────────────────
+  'army.general_shortlist': {
+    desk: 'army',
+    cost: () => 0,
+    label: () => 'Summon candidates for general',
+    available: (s) => (s.army.generals.length >= 8 ? 'You already have 8 generals.' : !s.shortlists?.generals || 'Candidates already summoned this season.'),
+    run(s, a, api) {
+      s.shortlists = s.shortlists || {};
+      s.shortlists.generals = generalCandidates(s);
+      api.log('Three men wait in the courtyard of the barracks to be judged.');
+    },
+  },
+  'army.hire_general': {
+    desk: 'army',
+    cost: () => 1,
+    label: (s, a) => `Raise ${s.shortlists?.generals?.find((g) => g.id === a.id)?.name ?? 'a new man'} to general`,
+    available(s, a) {
+      if (s.army.generals.length >= 8) return 'You already have 8 generals.';
+      if (!s.shortlists?.generals?.some((g) => g.id === a.id)) return 'Summon candidates first.';
+      return s.gold >= 100 || 'A general’s gold collar costs 100 deben.';
+    },
+    run(s, a, api) {
+      const g = s.shortlists.generals.find((x) => x.id === a.id);
+      const { origin, originLabel, ...general } = g;
+      s.army.generals.push(general);
+      s.shortlists.generals = s.shortlists.generals.filter((x) => x.id !== a.id);
+      const fx = { gold: -100, approval: {} };
+      if (origin === 'noble') fx.approval.bureaucracy = 3;
+      if (origin === 'foreign') fx.approval.military = -2;
+      else fx.approval.military = 2;
+      api.fx(fx);
+      api.log(`${g.name} receives the gold collar of a general (${originLabel.toLowerCase()}). Give him a division on the unit cards.`);
+    },
+  },
+  'army.dismiss_general': {
+    desk: 'army',
+    cost: () => 1,
+    label: (s, a) => `Dismiss General ${s.army.generals.find((g) => g.id === a.id)?.name}`,
+    available: (s, a) => Boolean(s.army.generals.find((g) => g.id === a.id)) || 'No such general.',
+    run(s, a, api) {
+      const g = s.army.generals.find((x) => x.id === a.id);
+      for (const u of units(s)) if (u.commanderId === g.id) u.commanderId = null;
+      s.army.generals = s.army.generals.filter((x) => x !== g);
+      api.fx({ approval: { military: g.ambition > 65 ? -6 : -2 } });
+      api.log(`General ${g.name} is retired to an estate in the Delta.${g.ambition > 65 ? ' He takes his grievances, and his friends among the officers, with him.' : ''}`);
     },
   },
 

@@ -49,11 +49,16 @@ test('every child of marriageable age has real matches, and marrying binds them'
   assert.notEqual(canPerform(s, 'family.marry', { childId: 'meritamun', matchId: nomeMatch.id }), true);
 });
 
-test('children too young cannot marry; schooling only between 4 and 15', () => {
+test('children too young cannot marry; the nursery is for children, adult training costs gold', () => {
   const s = newGame('young');
   assert.match(String(canPerform(s, 'family.marry', { childId: 'nebettawy', matchId: 'gods_wife' })), /young/);
   assert.equal(canPerform(s, 'family.educate', { childId: 'amenmose', school: 'scribe' }), true);
-  assert.notEqual(canPerform(s, 'family.educate', { childId: 'khaemopet', school: 'scribe' }), true);
+  assert.match(String(canPerform(s, 'family.educate', { childId: 'amenmose', school: 'chariot' })), /Too young/);
+  assert.notEqual(canPerform(s, 'family.educate', { childId: 'khaemopet', school: 'kap' }), true);
+  assert.notEqual(canPerform(s, 'family.educate', { childId: 'khaemopet', school: 'chariot' }), true, 'already trained there');
+  const gold = s.gold;
+  perform(s, 'family.educate', { childId: 'khaemopet', school: 'temple' });
+  assert.equal(s.gold, gold - 100);
 });
 
 test('appointments need a shortlist; sons can be appointed directly', () => {
@@ -98,7 +103,7 @@ test('every desk command can run from a fresh game without throwing', () => {
     'family.marry': [{ childId: 'meritamun', matchId: 'gods_wife' }],
     'family.designate': [{ sonId: 'khaemopet' }], 'family.ptah': [{ sonId: 'khaemopet' }],
     'family.favor': [{ wifeId: 'asmunikal' }], 'family.gift': [{ wifeId: 'henuttawy' }],
-    'family.elevate': [{ wifeId: 'asmunikal' }], 'family.wed_dowager': [{ wifeId: 'asmunikal' }], 'family.wed_sibling': [{ childId: 'meritamun' }], 'family.sideline': [{ wifeId: 'henuttawy' }],
+    'family.elevate': [{ wifeId: 'asmunikal' }], 'family.wed_dowager': [{ wifeId: 'asmunikal' }], 'family.wed_sibling': [{ childId: 'meritamun' }], 'army.general_shortlist': [{}], 'army.hire_general': [{ id: 'none' }], 'army.dismiss_general': [{ id: 'mahu' }], 'family.sideline': [{ wifeId: 'henuttawy' }],
     'family.take_wife': [{ source: 'nome:delta' }, { source: 'foreign:hatti' }, { source: 'general:urhiya' }, { source: 'harem' }],
     'court.shortlist': Object.keys(OFFICES).map((office) => ({ office })),
     'court.appoint': [{ office: 'viceroy', candidateId: 'son:khaemopet' }], 'court.reward': [{ office: 'overseer' }],
@@ -185,4 +190,22 @@ test('fuzz: random reigns mixing decrees and desk commands stay sane', () => {
     }
     assert.deepEqual(JSON.parse(JSON.stringify(s)), s);
   }
+});
+
+test('more generals can be summoned and raised; adults and princesses can train at the chariot stables', () => {
+  const s = newGame('generals');
+  s.attention.left = 9;
+  perform(s, 'army.general_shortlist', {});
+  assert.equal(s.shortlists.generals.length, 3);
+  const pick = s.shortlists.generals[2];
+  perform(s, 'army.hire_general', { id: pick.id });
+  assert.equal(s.army.generals.length, 4);
+  perform(s, 'army.command', { unitId: 'ptah', personId: pick.id });
+  assert.equal(s.army.units.find((u) => u.id === 'ptah').commanderId, pick.id);
+  // A 26-year-old prince retrains; a princess learns the chariot.
+  perform(s, 'family.educate', { childId: 'khaemopet', school: 'scribe' });
+  assert.equal(s.sons.find((x) => x.id === 'khaemopet').skill, 'administration');
+  perform(s, 'family.educate', { childId: 'meritamun', school: 'chariot' });
+  assert.equal(s.daughters.find((x) => x.id === 'meritamun').skill, 'martial');
+  assert.notEqual(canPerform(s, 'family.educate', { childId: 'khaemopet', school: 'kap' }), true);
 });

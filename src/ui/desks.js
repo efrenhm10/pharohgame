@@ -181,7 +181,13 @@ function armyDesk(s) {
     })
     .join('');
   const gens = s.army.generals
-    .map((g) => `<div class="mini-person">${person(g, 44)}<div><strong>${esc(g.name)}</strong><br><span class="small">Martial ${g.martial} · Loyalty <span class="${loyaltyTone(g.loyalty)}">${g.loyalty}</span> · Ambition ${g.ambition}${g.royalKin ? ' · royal son-in-law' : ''}</span></div></div>`)
+    .map((g) => {
+      const commands = units(s).filter((u) => u.commanderId === g.id).map((u) => u.name);
+      return `<div class="mini-person">${person(g, 44)}<div><strong>${esc(g.name)}</strong><br><span class="small">Martial ${g.martial} · Loyalty <span class="${loyaltyTone(g.loyalty)}">${g.loyalty}</span> · Ambition ${g.ambition}${g.royalKin ? ' · royal son-in-law' : ''}</span><br><span class="small muted">${commands.length ? `Commands the ${esc(commands.join(', the '))}` : 'No command yet'}</span></div>${cmd(s, 'army.dismiss_general', { id: g.id }, 'Dismiss')}</div>`;
+    })
+    .join('');
+  const recruits = (s.shortlists?.generals || [])
+    .map((g) => `<div class="cand">${person(g, 44)}<div><strong>${esc(g.name)}</strong> <span class="small muted">${esc(g.originLabel)}, ${g.age}</span><br><span class="small">Martial ${g.martial} · Loyalty ${g.loyalty} · Ambition ${g.ambition}</span></div>${cmd(s, 'army.hire_general', { id: g.id }, 'Make general (100 dbn)')}</div>`)
     .join('');
   return `${deskHead('⚔️ The Army', 'The divisions of Amun, Ra, Ptah and Seth, the Chariot Corps, the Medjay and the Sherden guard. Armies fight where they are stationed: send them to a front before you go to war.', s)}
   <section class="panel">
@@ -197,7 +203,10 @@ function armyDesk(s) {
   <div class="units">${rows}</div>
   <div class="grid2">
     <section class="panel"><h3>Raids and punitive expeditions</h3>${camp}<p class="hint">For real conquest, declare war on the World desk.</p></section>
-    <section class="panel"><h3>Generals</h3><div class="people">${gens}</div></section>
+    <section class="panel"><h3>Generals (${s.army.generals.length}/8)</h3><div class="people">${gens}</div>
+      <div class="cmds" style="margin-top:0.6rem">${cmd(s, 'army.general_shortlist', {}, 'Summon candidates for general')}</div>
+      ${recruits ? `<div class="cands" style="margin-top:0.5rem">${recruits}</div>` : ''}
+      <p class="hint">A veteran is steady; a Nomarch’s son brings his family’s favour and ambition; a foreign captain fights best and is loyal to pay. Princes trained in the chariot stables also make fine commanders.</p></section>
   </div>`;
 }
 
@@ -306,7 +315,9 @@ const POSTS = (s, c) => {
 function childCard(s, c) {
   const isHeir = c.id === s.heirId;
   const trait = TRAITS[c.trait];
-  const schoolSel = !c.edu && c.age >= 4 && c.age <= 15 ? pickCmd(s, 'family.educate', { childId: c.id }, 'school', Object.entries(SCHOOLS).map(([id, sc]) => [id, `${sc.name}: ${sc.note}`]), 'Send to school…') : '';
+  const schoolSel = c.age >= 4 && !c.abroad && c.office !== 'gods_wife'
+    ? pickCmd(s, 'family.educate', { childId: c.id }, 'school', Object.entries(SCHOOLS).filter(([id, sc]) => id !== c.edu && !(sc.maxAge && c.age > sc.maxAge)).map(([id, sc]) => [id, `${sc.name}: ${sc.note}`]), c.age > 15 ? 'Train at… (100 dbn)' : c.edu ? 'Change school…' : 'Send to school…')
+    : '';
   const matches = !c.spouse && c.office !== 'gods_wife' && !c.abroad && isAdult(c) ? matchOptions(s, c) : [];
   const marry = matches.length
     ? `<details class="match"><summary>💍 Arrange a marriage <span class="cost">⚡2</span></summary><div class="match__list">${matches.map((m) => `<div class="match__item"><div><strong>${esc(m.label)}</strong><br><span class="small muted">${esc(m.hint)}</span></div>${cmd(s, 'family.marry', { childId: c.id, matchId: m.id }, 'Arrange')}</div>`).join('')}<p class="hint">To marry into any Nomarch’s house, use that nome’s card on the Two Lands desk.</p></div></details>`
