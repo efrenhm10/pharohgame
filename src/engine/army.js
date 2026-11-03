@@ -1,12 +1,15 @@
 // The army: units, commanders, stations, strength and battle odds.
 import { clamp } from './util.js';
 
+// Where an army can stand. The three fronts are where wars are fought:
+// a war over Kadesh, Ugarit, Ashur or Cyprus is fought on the northern front;
+// over Napata on the Kush front; over Siwa or Marmarica on the Libyan front.
 export const STATIONS = {
   capital: { name: 'Pi-Ramesses (the capital)', note: 'Guards the throne against coups and riots' },
-  west: { name: 'Western forts', note: 'Holds the Libyan frontier' },
-  delta: { name: 'Delta river mouths', note: 'Watches the sea for raiders' },
-  south: { name: 'Kush (Buhen)', note: 'Protects the gold country' },
-  canaan: { name: 'Canaan garrisons', note: 'Keeps the vassal kings paying' },
+  canaan: { name: 'Northern front: Canaan, Syria, Mesopotamia, Alashiya', note: 'Fights every war in Asia and keeps the vassal kings paying' },
+  south: { name: 'Kush front (Buhen and beyond)', note: 'Fights wars in Nubia and protects the gold country' },
+  west: { name: 'Libyan front (western forts)', note: 'Fights the Libu and holds the western frontier' },
+  delta: { name: 'Delta coast', note: 'Watches the sea for raiders' },
 };
 
 export const RATIONS_PER_MAN = 5; // khar / month

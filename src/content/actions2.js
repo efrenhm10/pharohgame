@@ -2,7 +2,7 @@
 // appointing the royal children, and paying the army right now.
 import { fmt, clamp } from '../engine/util.js';
 import { son, child as anyChild, isAdult, wife } from '../engine/realm.js';
-import { unit, units, syncArmyBurn } from '../engine/army.js';
+import { unit, units, syncArmyBurn, STATIONS } from '../engine/army.js';
 import { province, reachable, frontOf, newWar, peaceTerms, makePeace, provinceValue, egyptProvinces, building } from '../engine/world.js';
 import { spyOn, targetName, SPY_TARGETS } from '../engine/spies.js';
 import { MALE_NAMES, FEMALE_NAMES, seedNum, generalCandidates } from '../engine/people.js';
@@ -92,6 +92,22 @@ export const MORE_ACTIONS = {
       n.loyalty = clamp(n.loyalty - 12, 0, 100);
       api.fx({ grain: amount, maat: -1, approval: { bureaucracy: -2 } });
       api.log(`Royal scribes empty the storehouses of ${n.name}: ${fmt(amount)} khar for the crown. Nomarch ${n.nomarch} smiles, and remembers.`);
+    },
+  },
+
+  // ⚔️ MARCH TO A FRONT ───────────────────────────────────────────────
+  'army.march': {
+    desk: 'army',
+    cost: () => 0,
+    label: (s, a) => `March every field unit at the capital to the ${a.front === 'canaan' ? 'northern' : a.front === 'south' ? 'Kush' : 'Libyan'} front`,
+    available: (s, a) => (!STATIONS[a.front] || a.front === 'capital' ? 'Choose a front.' : units(s).some((u) => u.station === 'capital' && u.kind !== 'police') || 'No field units are left at the capital.'),
+    run(s, a, api) {
+      const moved = units(s).filter((u) => u.station === 'capital' && u.kind !== 'police');
+      for (const u of moved) {
+        u.station = a.front;
+        s.cooldowns[`station-${u.id}`] = s.turn + 1;
+      }
+      api.log(`${moved.map((u) => `The ${u.name}`).join(', ')} march${moved.length === 1 ? 'es' : ''} out of Pi-Ramesses. Only the Medjay remain to guard the palace.`);
     },
   },
 

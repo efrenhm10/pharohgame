@@ -115,3 +115,13 @@ test('daughters can govern nomes and provinces', () => {
   assert.equal(province(s, 'gaza').governorId, 'meritamun');
   assert.notEqual(canPerform(s, 'family.appoint', { childId: 'meritamun', post: 'vizier' }), true);
 });
+
+test('troops can be marched to the front of a war in enemy land', () => {
+  const s = newGame('march');
+  s.attention.left = 9;
+  perform(s, 'war.declare', { realm: 'kush', target: 'napata' });
+  perform(s, 'army.march', { front: 'south' });
+  assert.ok(s.army.units.filter((u) => u.kind !== 'police').every((u) => u.station !== 'capital'));
+  perform(s, 'army.station', { unitId: 'ra', station: 'south' });
+  assert.equal(s.army.units.find((u) => u.id === 'ra').station, 'south');
+});

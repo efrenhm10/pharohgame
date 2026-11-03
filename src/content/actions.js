@@ -296,7 +296,7 @@ export const ACTIONS = {
     cooldown: 1,
     key: (a) => `station-${a.unitId}`,
     label: (s, a) => `Send the ${unit(s, a.unitId).name} to ${STATIONS[a.station].name}`,
-    available: (s, a) => unit(s, a.unitId).station !== a.station || 'Already there.',
+    available: (s, a) => (!unit(s, a.unitId) || !STATIONS[a.station] ? 'Choose a unit and a destination.' : unit(s, a.unitId).station !== a.station || 'Already there.'),
     run(s, a, api) {
       const u = unit(s, a.unitId);
       u.station = a.station;

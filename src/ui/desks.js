@@ -65,7 +65,22 @@ function spyBtn(s, type, id) {
   return cmd(s, 'spy.recruit', { type, target: id }, '👁️ Plant a spy (100 dbn)');
 }
 
-const STATION_OF_FRONT = { canaan: 'Canaan garrisons', south: 'Kush (Buhen)', west: 'Western forts' };
+const STATION_OF_FRONT = { canaan: 'the northern front (Canaan, Syria, Mesopotamia, Alashiya)', south: 'the Kush front', west: 'the Libyan front' };
+
+/** The front a war is fought on. */
+function warFront(s, w) {
+  const t = province(s, w.target) || province(s, w.defending);
+  return t ? REGIONS[t.region].front : 'canaan';
+}
+
+/** Destinations for a unit: every station, plus each war by name. */
+function stationChoices(s) {
+  const wars = s.wars.map((w) => {
+    const t = province(s, w.target);
+    return [warFront(s, w), `⚔️ To the war with ${s.realms[w.enemy].name}${t ? ` (siege of ${t.name})` : ''}`];
+  });
+  return [...wars, ...Object.entries(STATIONS).map(([id, st]) => [id, st.name])];
+}
 
 // ── 💰 TREASURY & GRANARIES ─────────────────────────────────────────────
 
@@ -167,7 +182,7 @@ function armyDesk(s) {
         </div>
         <div class="cmds">
           ${pickCmd(s, 'army.command', { unitId: u.id }, 'personId', people, 'Change commander')}
-          ${pickCmd(s, 'army.station', { unitId: u.id }, 'station', Object.entries(STATIONS).map(([id, st]) => [id, st.name]), 'Send to')}
+          ${pickCmd(s, 'army.station', { unitId: u.id }, 'station', stationChoices(s), 'Send to…')}
         </div>
         ${spyOn(s, 'unit', u.id) ? `<p class="small intel">👁️ ${md(intel(s, spyOn(s, 'unit', u.id)))}</p>${cmd(s, 'spy.arrest', { type: 'unit', target: u.id }, 'Arrest the commander on the spy’s evidence')}` : ''}
       </article>`;
@@ -222,7 +237,7 @@ function worldDesk(s) {
     .map((w) => {
       const r = s.realms[w.enemy];
       const t = province(s, w.target);
-      const front = t ? REGIONS[t.region].front : w.defending ? REGIONS[province(s, w.defending).region].front : 'canaan';
+      const front = warFront(s, w);
       const ours = frontPower(s, front);
       const theirs = enemyFrontPower(s, w.enemy);
       const targets = s.provinces.filter((p) => p.owner === w.enemy && !p.occupiedBy && reachable(s, p));
@@ -232,6 +247,7 @@ function worldDesk(s) {
         <div class="bars"><span>War score</span>${meter(clamp((w.score + 100) / 2, 0, 100), { tone: w.score >= 0 ? 'good' : 'bad', label: 'war score' })}<b>${w.score}</b></div>
         <p class="small">Front: <strong>${STATION_OF_FRONT[front]}</strong>. Your power there ${fmt(ours)} against about ${fmt(theirs)}.${ours === 0 ? ' <span class="bad">No Egyptian units are on this front! Station divisions there on the Army desk.</span>' : ''}</p>
         <p class="small">Siege target: <strong>${t ? `${esc(t.name)} (${t.siege}%)` : 'none'}</strong></p>
+        ${troopsPanel(s, front)}
         <div class="cmds">${pickCmd(s, 'war.target', { warId: w.id }, 'provinceId', targets.map((p) => [p.id, `${p.name} (defense ${defenseOf(s, p)})`]), 'Change siege target')}</div>
         <details class="match"><summary>🕊️ Peace terms</summary><div class="match__list">${terms.map((x) => `<div class="match__item"><div><strong>${esc(x.label)}</strong><br><span class="small muted">${x.ok ? 'They will accept.' : `Needs war score ${x.need}.`}</span></div>${cmd(s, 'war.peace', { warId: w.id, terms: x.id }, 'Offer')}</div>`).join('')}</div></details>
         ${w.log.length ? `<p class="small muted">Last: ${md(w.log[w.log.length - 1])}</p>` : ''}
@@ -273,6 +289,16 @@ function worldDesk(s) {
   <section class="panel"><h3>🏆 The great powers</h3><div class="table-wrap"><table class="power"><tbody>${ranking}</tbody></table></div><p class="hint">Score: wealth 40%, army 30%, land 15%, prestige 15%.</p></section>
   ${regions}
   <h3 class="section-title">Foreign courts</h3><div class="cards">${realms}</div>`;
+}
+
+/** Who is on a front, and buttons to send everyone else there. */
+function troopsPanel(s, front) {
+  const here = units(s).filter((u) => u.station === front && u.kind !== 'police');
+  const away = units(s).filter((u) => u.station !== front && u.kind !== 'police');
+  return `<div class="troops">
+    <p class="small"><strong>On this front:</strong> ${here.length ? here.map((u) => `${esc(u.name)} (${fmt(u.men)})`).join(', ') : '<span class="bad">nobody</span>'}</p>
+    <div class="cmds">${cmd(s, 'army.march', { front }, 'Send everything at the capital')}${away.map((u) => cmd(s, 'army.station', { unitId: u.id, station: front }, `Send the ${esc(u.name)} (${fmt(u.men)}, now at ${esc(STATIONS[u.station].name.split(':')[0].split(' (')[0])})`)).join('')}</div>
+  </div>`;
 }
 
 function provinceCard(s, p) {
