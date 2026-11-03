@@ -2,7 +2,7 @@
 // brief(state, ctx) → paragraphs (mini-markdown: **bold**, *italic*)
 // option: { id, title, cost, fallout, risk, available?(s,ctx), unlocked?, apply(s, api) }
 import { fmt } from '../engine/util.js';
-import { heir, son, wife, sonsOf, rivalClaimant, isAdult, approval, livingSons } from '../engine/realm.js';
+import { heir, son, wife, sonsOf, rivalClaimant, isAdult, approval, livingSons, heirTitle, possessive } from '../engine/realm.js';
 import { reserveMonths } from '../engine/economy.js';
 import { cubitsLabel } from '../engine/flood.js';
 import { commander, units, syncArmyBurn } from '../engine/army.js';
@@ -655,7 +655,7 @@ const poisonedCup = {
       title: 'Buy Her Silence: Raise Her Son',
       available: (s, ctx) => sonsOf(s, ctx.wifeId).length > 0,
       cost: (s, ctx) => `Prince ${sonsOf(s, ctx.wifeId)[0].name} is given new titles and estates. The conspirators are quietly strangled, but she is not touched.`,
-      fallout: (s) => `Her satisfaction +40%. Crown Prince ${heirName(s)}’s Legitimacy −10, and his mother is furious.`,
+      fallout: (s) => `Her satisfaction +40%. ${heirTitle(heir(s))} ${heirName(s)}’s Legitimacy −10, and ${possessive(heir(s))} mother is furious.`,
       risk: 'The harem learns that poison works.',
       apply(s, api) {
         const w = wife(s, api.ctx.wifeId);
@@ -958,7 +958,7 @@ const rivalClaim = {
     {
       id: 'designate',
       title: (s, ctx) => `Designate Prince ${son(s, ctx.rivalId).name} as Heir`,
-      cost: (s) => `Crown Prince ${heirName(s)} is set aside.`,
+      cost: (s) => `${heirTitle(heir(s))} ${heirName(s)} is set aside.`,
       fallout: 'Military +10%. The new heir’s mother is triumphant; the old heir’s mother is your enemy for life.',
       risk: 'The faction tied to the old heir’s mother turns on you, and you have shown that pressure can change the succession.',
       apply(s, api) {
@@ -984,7 +984,7 @@ const rivalClaim = {
       apply(s, api) {
         const r = son(s, api.ctx.rivalId);
         api.fx({ gold: -600, approval: { priesthood: 5 }, sons: { [s.heirId]: { legitimacy: 15 }, [r.id]: { loyalty: -15 } }, wives: { [r.motherId]: -15 } });
-        api.log(`Amun’s barque bows to Crown Prince ${heirName(s)}. Prince ${r.name} watches without expression.`);
+        api.log(`Amun’s barque bows to ${heirTitle(heir(s))} ${heirName(s)}. Prince ${r.name} watches without expression.`);
       },
     },
     {
@@ -1003,7 +1003,7 @@ const rivalClaim = {
     {
       id: 'marry',
       title: 'Marry the Heir to a Royal Daughter',
-      available: (s) => heir(s) && isAdult(heir(s)) && (s.daughters || []).some((d) => d.age >= 16 && d.motherId !== heir(s).motherId) && s.gold >= 300,
+      available: (s) => heir(s) && heir(s).sex !== 'f' && isAdult(heir(s)) && (s.daughters || []).some((d) => d.age >= 16 && d.motherId !== heir(s).motherId) && s.gold >= 300,
       cost: '300 deben for the wedding festival.',
       fallout: 'The heir’s Legitimacy +15. The rival’s mother −5%.',
       risk: 'The bloodline narrows. Every princess married at home is one not sent abroad to secure a treaty.',

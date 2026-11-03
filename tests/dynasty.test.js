@@ -113,3 +113,13 @@ test('children get real names, and old placeholder names are repaired', () => {
   assert.ok(!s.daughters.some((d) => /of Year/.test(d.name)));
   assert.ok(!s.sons.some((x) => /of Year/.test(x.name)));
 });
+
+import { heirTitle, childWord } from '../src/engine/realm.js';
+test('a daughter heir is called Crown Princess, daughter of her mother', () => {
+  const s = newGame('princess-heir');
+  perform(s, 'family.designate', { sonId: 'nebettawy' });
+  const h = s.daughters.find((d) => d.id === 'nebettawy');
+  assert.equal(heirTitle(h), 'Crown Princess');
+  assert.equal(childWord(h), 'daughter');
+  assert.equal(h.role, 'Crown Princess');
+});

@@ -1,5 +1,5 @@
 // The Weighing of the Heart — judgment of a reign when it ends.
-import { heir, rivalClaimant, isAdult } from './realm.js';
+import { heir, rivalClaimant, isAdult, heirTitle, possessive } from './realm.js';
 
 const MONUMENT_POINTS = { obelisks: 4, pylon: 10, mortuary: 15 };
 
@@ -52,7 +52,7 @@ export function weighHeart(state, cause) {
     lines.push('The royal tomb was complete → 10 points.');
   } else if (h) {
     h.legitimacy = Math.max(0, h.legitimacy - 15);
-    lines.push('The royal tomb was left unfinished. The heir begins his reign at −15 Legitimacy.');
+    lines.push('The royal tomb was left unfinished. The heir begins the new reign at −15 Legitimacy.');
   }
 
   const reignYears = Math.min(30, state.year);
@@ -69,14 +69,14 @@ export function weighHeart(state, cause) {
   } else {
     const heirPts = Math.round(h.legitimacy * 0.3);
     score += heirPts;
-    lines.push(`Crown Prince ${h.name}'s Legitimacy: ${h.legitimacy} → ${heirPts} points.`);
+    lines.push(`${heirTitle(h)} ${h.name}'s Legitimacy: ${h.legitimacy} → ${heirPts} points.`);
     const rival = rivalClaimant(state);
     if (rival && isAdult(rival) && rival.legitimacy >= h.legitimacy && rival.loyalty < 60) {
-      succession = `Crown Prince ${h.name} (Legitimacy ${h.legitimacy}) claims the throne, but Prince ${rival.name} (Legitimacy ${rival.legitimacy}) has the army's ear. A war of succession is likely.`;
+      succession = `${heirTitle(h)} ${h.name} (Legitimacy ${h.legitimacy}) claims the throne, but Prince ${rival.name} (Legitimacy ${rival.legitimacy}) has the army's ear. A war of succession is likely.`;
     } else if (!isAdult(h)) {
-      succession = `Crown Prince ${h.name} is only ${h.age}. A regency will rule in his name, and regents have their own ambitions.`;
+      succession = `${heirTitle(h)} ${h.name} is only ${h.age}. A regency will rule in ${possessive(h)} name, and regents have their own ambitions.`;
     } else {
-      succession = `Crown Prince ${h.name} (Legitimacy ${h.legitimacy}) takes the Double Crown. The succession holds.`;
+      succession = `${heirTitle(h)} ${h.name} (Legitimacy ${h.legitimacy}) takes the Double Crown. The succession holds.`;
     }
   }
 

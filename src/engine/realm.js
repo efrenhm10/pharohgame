@@ -61,6 +61,10 @@ export function motherName(state, id) {
   if (id === 'pharaoh') return state.pharaoh.name;
   return wife(state, id)?.name ?? '—';
 }
+/** "Crown Prince" or "Crown Princess", "son" or "daughter", "his" or "her". */
+export const heirTitle = (h) => (h?.sex === 'f' ? 'Crown Princess' : 'Crown Prince');
+export const childWord = (c) => (c?.sex === 'f' ? 'daughter' : 'son');
+export const possessive = (c) => (c?.sex === 'f' ? 'her' : 'his');
 export const spouseName = (c) => (c?.spouse ? (typeof c.spouse === 'string' ? c.spouse : c.spouse.name) : null);
 export const isAdult = (s) => s.age >= ADULT_AGE;
 

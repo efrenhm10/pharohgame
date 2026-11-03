@@ -2,7 +2,7 @@
 // Same option shape as crises; the UI labels the fields Investment /
 // Political Dividend / Long-Term Dynastic Legacy.
 import { fmt } from '../engine/util.js';
-import { heir, son, wife, sonsOf, isAdult, livingSons } from '../engine/realm.js';
+import { heirTitle, possessive, heir, son, wife, sonsOf, isAdult, livingSons } from '../engine/realm.js';
 import { surplusGrain, surplusGold } from '../engine/economy.js';
 import { cubitsLabel } from '../engine/flood.js';
 
@@ -42,7 +42,7 @@ const blessing = {
       title: 'Proclaim an Opet Festival of Unmatched Splendor',
       cost: '80,000 khar of bread and beer, and 200 deben of gold for the god’s new barque.',
       fallout: 'Ma’at +8. Every power block +4%. The Crown Prince is shown to the people.',
-      risk: (s) => `Crown Prince ${heir(s) ? heir(s).name : ''} gains +5 Legitimacy. Grain spent on festivals cannot be eaten in a lean year.`,
+      risk: (s) => `${heirTitle(heir(s))} ${heir(s) ? heir(s).name : ''} gains +5 Legitimacy. Grain spent on festivals cannot be eaten in a lean year.`,
       apply(s, api) {
         const fx = { grain: -80000, gold: -200, maat: 8, approval: { priesthood: 4, bureaucracy: 4, military: 4, harem: 4 } };
         if (heir(s)) fx.sons = { [s.heirId]: { legitimacy: 5 } };
@@ -126,7 +126,7 @@ const punt = {
       id: 'incense',
       title: 'Hold the Incense for the Crown Prince’s Rite',
       cost: 'The incense is stored for a great ceremony presenting the heir.',
-      fallout: (s) => `Crown Prince ${heir(s) ? heir(s).name : ''}’s Legitimacy +10. His mother +10%. Rival mothers −10%.`,
+      fallout: (s) => `${heirTitle(heir(s))} ${heir(s) ? heir(s).name : ''}’s Legitimacy +10. ${possessive(heir(s)) === 'her' ? 'Her' : 'His'} mother +10%. Rival mothers −10%.`,
       risk: 'You have publicly ranked your sons, and the losers will remember it.',
       apply(s, api) {
         const h = heir(s);
@@ -550,7 +550,7 @@ const sedFestival = {
         const wives = {};
         for (const w of s.wives.filter((x) => x.status === 'court')) if (h && w.id !== h.motherId) wives[w.id] = -20;
         api.fx({ grain: -100000, maat: 10, sons: h ? { [h.id]: { legitimacy: 25 } } : {}, wives });
-        api.log(h ? `Crown Prince ${h.name} is crowned beside you. The Two Lands have two Horuses.` : 'The festival is held, but there is no heir to crown.');
+        api.log(h ? `${heirTitle(h)} ${h.name} is crowned beside you. The Two Lands have two Horuses.` : 'The festival is held, but there is no heir to crown.');
       },
     },
     {

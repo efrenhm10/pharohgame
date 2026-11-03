@@ -4,7 +4,7 @@ import { BLOCS, BLOC_LABELS, BLOC_ICONS, FLOOD_BANDS, SEASON_MEANING } from '../
 import { monthlyBurnBreakdown, monthlyBurn, reserveMonths, surplusGrain } from '../engine/economy.js';
 import { cubitsLabel } from '../engine/flood.js';
 import { totalMen, avgMorale } from '../engine/army.js';
-import { approval, maatState, heir, wife, rivalClaimant, mostDangerousWife, seasonName, livingSons } from '../engine/realm.js';
+import { approval, maatState, heir, wife, rivalClaimant, mostDangerousWife, seasonName, livingSons, heirTitle, childWord, motherName } from '../engine/realm.js';
 import { fmt, resolve } from '../engine/util.js';
 import { demands } from '../content/demands.js';
 import { portrait } from './portraits.js';
@@ -146,8 +146,8 @@ function stateOfRealm(state) {
         ${state.armyRation < 1 ? `<br><span class="warn">The army is on ${state.armyRation === 0.5 ? 'half' : 'reduced'} rations.</span>` : ''}
       </li>
       <li><strong>The Dynastic Succession:</strong>
-        ${h ? `Crown Prince <strong>${esc(h.name)}</strong>, age ${h.age}, son of ${esc(wife(state, h.motherId)?.name ?? 'an unknown mother')}. <strong>Legitimacy ${h.legitimacy} · Loyalty ${h.loyalty}</strong>.` : '<span class="bad">No designated heir.</span>'}
-        ${rival ? `<br>Shadow claimant: <strong>Prince ${esc(rival.name)}</strong>, age ${rival.age}, son of ${esc(wife(state, rival.motherId)?.name ?? '?')}, ${esc(rival.role)}. Legitimacy ${rival.legitimacy} · Loyalty ${rival.loyalty}.` : ''}
+        ${h ? `${heirTitle(h)} <strong>${esc(h.name)}</strong>, age ${h.age}, ${childWord(h)} of ${esc(motherName(state, h.motherId))}. <strong>Legitimacy ${h.legitimacy} · Loyalty ${h.loyalty}</strong>.` : '<span class="bad">No designated heir.</span>'}
+        ${rival ? `<br>Shadow claimant: <strong>Prince ${esc(rival.name)}</strong>, age ${rival.age}, son of ${esc(motherName(state, rival.motherId))}, ${esc(rival.role)}. Legitimacy ${rival.legitimacy} · Loyalty ${rival.loyalty}.` : ''}
         ${preg ? `<br><span class="muted">${esc(preg.name)} is with child.</span>` : ''}
       </li>
       <li><strong>Faction Support:</strong><ul class="blocs">${blocRows}</ul></li>

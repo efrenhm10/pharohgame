@@ -1,5 +1,5 @@
 // What each power block is demanding right now, derived from the state.
-import { heir, wife, rivalClaimant, mostDangerousWife } from '../engine/realm.js';
+import { heir, wife, rivalClaimant, mostDangerousWife, heirTitle } from '../engine/realm.js';
 import { reserveMonths } from '../engine/economy.js';
 
 export function demands(state) {
@@ -27,7 +27,7 @@ export function demands(state) {
   const h = heir(state);
   const r = rivalClaimant(state);
   if (w && w.satisfaction < 40 && r && r.motherId === w.id) d.harem = `${w.name} wants her son ${r.name} named Crown Prince`;
-  else if (h && h.age < 16 && wife(state, h.motherId)) d.harem = `${wife(state, h.motherId).name} wants Crown Prince ${h.name} shown to the people at the Opet Festival`;
+  else if (h && h.age < 16 && wife(state, h.motherId)) d.harem = `${wife(state, h.motherId).name} wants ${heirTitle(h)} ${h.name} shown to the people at the Opet Festival`;
   else d.harem = 'Each mother wants her own son raised above his brothers';
 
   if (reserveMonths(state) < 1.5) d.military = `${d.military}. They will not march on empty bellies`;

@@ -42,7 +42,7 @@ export function matchOptions(s, c) {
   if (female) {
     if (!s.flags.godsWife)
       out.push({ id: 'gods_wife', label: 'Consecrate her as God’s Wife of Amun', hint: 'She never marries. Priesthood +12%, Ma’at +3, and a royal voice inside Karnak.' });
-    if (h && h.alive && isAdult(h) && !h.spouse && h.motherId !== c.motherId)
+    if (h && h.alive && h.sex !== 'f' && isAdult(h) && !h.spouse && h.motherId !== c.motherId)
       out.push({ id: 'heir', label: `Marry her to Crown Prince ${h.name}`, hint: 'The divine blood: his Legitimacy +15, she becomes his Great Royal Wife, and their children are born with +15 Legitimacy, which locks the palace against rival mothers. But about 3 in 10 children of such marriages are born frail and may die young.' });
     for (const n of weakNomes)
       out.push({ id: `nome:${n.id}`, label: `The heir of ${n.nomarch}, Nomarch of ${n.name}`, hint: `Binds a wavering nome to the crown: loyalty +25 (now ${n.loyalty}). His family gains royal kin.` });
