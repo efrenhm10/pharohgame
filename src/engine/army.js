@@ -92,13 +92,4 @@ export function armySeason(state, report) {
     d += (state.blocs.military.approval - u.morale) > 0 ? 1 : -1;
     u.morale = clamp(Math.round(u.morale + d), 5, 100);
   }
-  // Mercenaries are paid in gold each year.
-  if (state.season === 2) {
-    const sher = units(state).filter((u) => u.kind === 'mercenary').reduce((s, u) => s + u.men, 0);
-    const pay = Math.round(sher / 10);
-    if (pay) {
-      state.gold = Math.max(0, state.gold - pay);
-      report.push(`The Sherden guard was paid ${pay} deben of gold for the year.`);
-    }
-  }
 }

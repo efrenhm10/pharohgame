@@ -31,8 +31,11 @@ const pick = (r, arr) => arr[Math.floor(r() * arr.length)];
 
 /** Normalise any person in the game state into a portrait spec. */
 export function specOf(p) {
-  const kind = p.kind || 'scribe';
-  const female = ['queen', 'wife', 'wife-hatti', 'wife-babylon', 'wife-kush', 'princess'].includes(kind) || p.sex === 'f';
+  let kind = p.kind || 'scribe';
+  const female = ['queen', 'wife', 'wife-hatti', 'wife-babylon', 'wife-kush', 'princess', 'pharaoh-f'].includes(kind) || (p.sex === 'f' && kind !== 'consort');
+  // A female Pharaoh wears the king's nemes and false beard, as Hatshepsut did; a consort dresses as a noble.
+  if (kind === 'pharaoh-f') kind = 'pharaoh';
+  if (kind === 'consort') kind = 'nomarch';
   const age = p.age ?? 35;
   return { kind, female, age, seed: p.seed ?? 7, child: (kind === 'prince' || kind === 'princess') && age < 12 };
 }

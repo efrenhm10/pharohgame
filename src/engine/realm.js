@@ -43,11 +43,25 @@ export function changeApproval(state, bloc, delta) {
 
 // ── The court ────────────────────────────────────────────────────────────
 
-export const courtWives = (state) => state.wives.filter((w) => w.status === 'court');
+/** Women of the court who play politics: the king's wives and the dowager queens. */
+export const courtWives = (state) => state.wives.filter((w) => w.status === 'court' || w.status === 'dowager');
+/** The reigning Pharaoh's own wives (or, for a female Pharaoh, her consort). */
+export const kingWives = (state) => state.wives.filter((w) => w.status === 'court');
 export const wife = (state, id) => state.wives.find((w) => w.id === id);
 export const son = (state, id) => state.sons.find((s) => s.id === id);
+export const daughter = (state, id) => (state.daughters || []).find((d) => d.id === id);
+/** Any prince or princess of the blood, by id. */
+export const child = (state, id) => son(state, id) || daughter(state, id);
 export const livingSons = (state) => state.sons.filter((s) => s.alive);
-export const heir = (state) => son(state, state.heirId);
+export const livingDaughters = (state) => (state.daughters || []).filter((d) => d.alive && !d.abroad);
+export const heir = (state) => child(state, state.heirId);
+export const isFemaleKing = (state) => state.pharaoh.sex === 'f';
+/** The name of a child's mother, who may be Pharaoh herself. */
+export function motherName(state, id) {
+  if (id === 'pharaoh') return state.pharaoh.name;
+  return wife(state, id)?.name ?? '—';
+}
+export const spouseName = (c) => (c?.spouse ? (typeof c.spouse === 'string' ? c.spouse : c.spouse.name) : null);
 export const isAdult = (s) => s.age >= ADULT_AGE;
 
 /** Influence-weighted average of each wife's satisfaction (DESIGN.md §4). */
@@ -76,10 +90,10 @@ export function rivalClaimant(state) {
 
 export function designateHeir(state, sonId) {
   const prev = heir(state);
-  if (prev && prev.id !== sonId) prev.role = prev.prevRole || 'King’s Son';
-  const next = son(state, sonId);
+  if (prev && prev.id !== sonId) prev.role = prev.prevRole || (prev.sex === 'f' ? 'King’s Daughter' : 'King’s Son');
+  const next = child(state, sonId);
   next.prevRole = next.role;
-  next.role = 'Crown Prince';
+  next.role = next.sex === 'f' ? 'Crown Princess' : 'Crown Prince';
   state.heirId = sonId;
 }
 

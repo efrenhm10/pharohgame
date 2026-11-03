@@ -42,7 +42,10 @@ export function chooseBriefing(state) {
   const forcedIdx = state.forced.findIndex(
     (f) => f.priority >= 80 || (!hardCap && (!crisisStreak || state.maat < 25 || f.ctx.fromOmen)),
   );
-  if (forcedIdx >= 0) {
+  if (state.forcedOpportunity?.first && !state.forced.some((f) => f.priority >= 99)) {
+    // A new reign always opens with its coronation.
+    type = 'opportunity';
+  } else if (forcedIdx >= 0) {
     entry = state.forced.splice(forcedIdx, 1)[0];
     type = 'crisis';
   } else if (state.forced.length) {

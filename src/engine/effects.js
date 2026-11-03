@@ -1,7 +1,7 @@
 // Declarative effects applied by decrees. Every applied change is returned as
 // a "chip" so the UI can show exactly what a decree cost and bought.
 import { clamp } from './util.js';
-import { changeMaat, changeApproval, wife, son, designateHeir } from './realm.js';
+import { changeMaat, changeApproval, wife, child, designateHeir } from './realm.js';
 import { MONUMENT_CATALOG } from '../content/monuments.js';
 
 const chip = (label, delta, unit = '') => ({ label, delta, unit });
@@ -60,8 +60,8 @@ export function applyEffects(state, fx = {}) {
     }
   }
   for (const [id, ch] of Object.entries(fx.sons || {})) {
-    const s = son(state, id);
-    if (!s || !s.alive) continue;
+    const s = child(state, id);
+    if (!s || !s.alive || s.legitimacy == null) continue;
     for (const [k, d] of Object.entries(ch)) {
       s[k] = clamp(s[k] + d, 0, 100);
       chips.push(chip(`${s.name} ${k === 'legitimacy' ? 'Legitimacy' : 'Loyalty'}`, d));

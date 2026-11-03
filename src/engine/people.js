@@ -22,8 +22,9 @@ export const TRAITS = {
   charming: { name: 'Charming', icon: '🌸', desc: 'Wins hearts at court and abroad.' },
   reckless: { name: 'Reckless', icon: '🎲', desc: 'Bold, and sometimes foolish.' },
   gentle: { name: 'Gentle', icon: '🕊️', desc: 'Loyal, and easily overlooked.' },
+  frail: { name: 'Frail', icon: '🩹', desc: 'Born of the divine blood, and sickly. May die young.' },
 };
-const TRAIT_KEYS = Object.keys(TRAITS);
+const TRAIT_KEYS = Object.keys(TRAITS).filter((k) => k !== 'frail');
 
 export const SCHOOLS = {
   kap: { name: 'The Kap (royal nursery school)', skill: 'statecraft', note: 'Raised beside the heir. Loyalty to the crown +10.', fx: {} },

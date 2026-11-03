@@ -361,7 +361,102 @@ robe, a Hittite queen's tall hat.
 
 ---
 
-## 10. Design Pillars (checklist for every mechanic and event)
+## 10. The Dynasty (Playing On as Your Heir)
+
+A reign ends; the game does not. When Pharaoh dies, the **Weighing of the Heart**
+judges the reign, and the player continues as the successor:
+
+- **Who inherits:** the designated heir; otherwise the eldest son, then a brother,
+  then a daughter. Any child can be named heir. A daughter costs Ma'at and Priesthood
+  favor and rules as a female Pharaoh with the nemes and false beard, as Hatshepsut did,
+  taking a consort instead of a harem and bearing her own heirs.
+- **The family turns over:** the old king's wives become **dowager queens**, and
+  his mother becomes **King's Mother**. All of them still scheme for their sons. The
+  new king's siblings become **brothers and sisters**, who are rival claimants, and
+  his spouse becomes Great Royal Wife. His children, born while he was a prince,
+  become the royal children.
+- **A contested crown:** a disloyal brother with legitimacy and troops can dispute
+  the accession (the *succession war*). Otherwise the reign opens with a coronation.
+- **A new tomb:** every king needs his own house of eternity.
+- **The game ends** only when nobody of the blood is left, or the line is usurped.
+  The final screen shows every ruler of the dynasty and a dynasty score.
+
+### Regency
+A king under 16 cannot rule. The player governs **as the regent**: the King's Mother
+if she lives, otherwise the Vizier. The regent has **Authority** (0–100), which
+erodes every season. While it is below 60, predatory nobles grab power each season:
+a Nomarch declares his office hereditary, a general seizes a command, Karnak absorbs
+royal fields, the Vizier's scribes skim. Below 20, the regency is openly challenged.
+The regent fights back by asserting authority, buying the nobles, or showing the
+young king at festivals. The regency ends when the king turns 16. Royal Attention
+is −1 during a regency.
+
+### The Divine Blood and the Alliance Paradox
+- **Sibling marriage** (the heir and a half-sister): the queen has royal blood, so
+  her children are born with +15 Legitimacy and the palace is locked against rival
+  mothers. But **3 in 10 are born frail**: they may die young, and a frail king's
+  health is capped.
+- **A foreign queen** (a Hittite or Babylonian princess): a **marriage alliance**.
+  Her father's kingdom will not declare war on Egypt while she lives at court, and
+  relations improve. But the priests count her children's blood as half foreign.
+- Children die young: 2% a year under five, 6% a year if frail.
+
+## 11. The Known World: Conquest, Vassals and Wealth
+
+Nineteen provinces in Canaan, Syria, Upper Mesopotamia, Alashiya, Sinai, Kush and
+Libya. Each has an owner, a status (Egyptian **province** or **vassal**),
+development, gold, grain, defense, a resource and unrest.
+
+- **Provinces** pay full taxes and send grain home, but unrest rises faster.
+  **Vassals** pay half as tribute and are calmer. Garrisons (units stationed on
+  that front), forts and temples lower unrest. At 85 unrest a province **revolts**,
+  goes back to its natural owner, and a war of rebellion begins.
+- **War:** declare war on a realm that holds a province you can reach (some
+  provinces require another first: Hattusa needs Carchemish). The reason for war
+  matters: reclaiming Egypt's old Syrian claims and punishing rebels or raiders cost
+  nothing, while plain conquest worsens every foreign relation. Breaking the eternal
+  treaty with Hatti costs Ma'at −12. **Armies fight where they are stationed**: each
+  season the units on that front battle the enemy's field army and besiege the
+  target. A fallen city is occupied and raises the war score.
+- **Peace:** annex occupied provinces, vassalize a small realm, take tribute, make
+  a white peace, or concede. The enemy accepts terms by war score. A crushed side
+  sues for peace, and a stalemate ends in exhaustion after nine seasons.
+- **Rival powers** with poor relations may declare war at the start of a year,
+  unless a marriage alliance or the treaty holds.
+- **Wealth:** a yearly gold ledger (provincial taxes, vassal tribute, workshops,
+  harbors, mines, trading posts, the royal estates, minus mercenary pay and spies).
+  Buildings in nomes (workshops, harbors, temples, storehouses) and provinces
+  (forts, temples, mines, trading posts, stud farms). Expeditions to Punt, Byblos
+  and Sinai. A **great-powers ranking** of wealth, army, land and prestige.
+
+## 12. The King's Eyes and Ears (Spies)
+
+Spies are planted in army units, Nomarch households, the households of queens and
+princes, officials' staffs and foreign courts, up to eight. Each costs 100 deben to
+place and 30 a year. Each season a spy may be caught: the target's loyalty or
+relation falls and the spy is lost.
+
+A spy turns rumours into **evidence**: a queen's exact plot, a commander's coup
+intent, a Nomarch's hidden grain, an official's skimming, a foreign king's army
+and plans. Urgent findings arrive in the season report unasked. Evidence enables
+**arrests without the usual outrage**: break up a harem plot, remove a treasonous
+commander or a thieving Nomarch, charge a corrupt official. Abroad, spies can
+**sabotage** an enemy army before a war.
+
+## 13. Acting Now
+
+Desks are open whether or not the season's decree is sealed. Arrears can be paid
+on the spot in grain or gold (free orders, from the Throne Room, Treasury or Army).
+Grain can be bought in bulk abroad, requisitioned from a nome, borrowed from
+Karnak or released from the sealed reserve. Every Nomarch can be married into, wed,
+spied on, audited or replaced from his own card. Royal children can be appointed
+to any office: Vizier, Overseer, Viceroy, governor of a nome or province,
+commander, High Priest of Ptah, God's Wife or Chantress of Amun, or Overseer of
+the royal estates.
+
+---
+
+## 14. Design Pillars (checklist for every mechanic and event)
 
 1. Does it make divinity feel **fragile** — can it cost Ma'at?
 2. Does it force a choice **between power blocks**? (In Opportunities: who gets the credit?)

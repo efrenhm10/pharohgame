@@ -808,7 +808,9 @@ const marchOnPalace = {
         const need = Math.round(s.arrears.army * s.burn.army * 1.2);
         const fromGrain = Math.min(s.grain.royal, need);
         const shortfall = need - fromGrain;
-        api.fx({ grain: -fromGrain, gold: shortfall ? -Math.min(s.gold, 1000) : 0, arrears: { army: -s.arrears.army }, approval: { military: 20 }, maat: -5 });
+        const L = coupLeader(s, api.ctx);
+        if (L.general) L.general.loyalty = Math.min(100, L.general.loyalty + 25);
+        api.fx({ grain: -fromGrain, gold: shortfall ? -Math.min(s.gold, 1000) : 0, arrears: { army: -s.arrears.army }, approval: { military: 20 }, maat: -5, sons: L.son ? { [L.son.id]: { loyalty: 25 } } : {} });
         api.log('Grain carts and gold rings meet the army on the Memphis road. The divisions turn around, cheering a king they nearly overthrew.');
       },
     },
@@ -1303,6 +1305,248 @@ const canaanRevolt = {
   ],
 };
 
+// ─────────────────────────────────────────────────────────────────────────
+// A brother with an army disputes the new Pharaoh's crown.
+const successionWar = {
+  id: 'succession_war',
+  type: 'crisis',
+  title: (s, ctx) => `The Crown Disputed: ${son(s, ctx.rivalId)?.name ?? 'a rival'} Claims the Throne`,
+  forcedOnly: true,
+  major: true,
+  brief: (s, ctx) => {
+    const r = son(s, ctx.rivalId);
+    const men = units(s).filter((u) => u.commanderId === r.id).reduce((t, u) => t + u.men, 0);
+    return [
+      `The embalmers have not yet finished their work on ${s.dynasty[s.dynasty.length - 1]?.name ?? 'the old king'}, and already **${r.name}** has refused to kneel. He says the gods chose *him*. His mother’s kin and ${men ? `**${fmt(men)} soldiers** under his command` : 'a faction of officers'} stand behind him.`,
+      `**${s.pharaoh.name}** is crowned, but a crown is only as strong as the army that guards it. Legitimacy: **${r.name} ${r.legitimacy}** against the throne’s Ma’at of **${s.maat}**. Military approval: **${s.blocs.military.approval}%**.`,
+    ];
+  },
+  options: [
+    {
+      id: 'buy',
+      title: (s, ctx) => `Buy ${son(s, ctx.rivalId)?.name}’s Submission`,
+      available: (s) => s.gold >= 800,
+      cost: '800 deben of gold and the Viceroyalty of Kush for your brother, far from the capital.',
+      fallout: 'Military +5%. Ma’at −3: the new king paid for his crown.',
+      risk: 'He keeps his claim, his gold and a Nubian army.',
+      apply(s, api) {
+        const r = son(s, api.ctx.rivalId);
+        r.role = 'Viceroy of Kush';
+        for (const u of units(s)) if (u.commanderId === r.id) u.commanderId = null;
+        api.fx({ gold: -800, approval: { military: 5 }, maat: -3, sons: { [r.id]: { loyalty: 25 } } });
+        api.log(`${r.name} kneels, and sails south as King’s Son of Kush with a fortune in gold.`);
+      },
+    },
+    {
+      id: 'fight',
+      title: 'Crush the Pretender',
+      cost: 'Civil war between the regiments at the capital.',
+      fallout: 'If you win: Ma’at +6, your rival is gone for good. If you lose, you lose the throne.',
+      risk: 'Everything. A new reign that begins in blood is remembered for it.',
+      apply(s, api) {
+        const r = son(s, api.ctx.rivalId);
+        const theirs = units(s).filter((u) => u.commanderId === r.id).reduce((t, u) => t + u.men, 0);
+        const base = 0.55 + (s.blocs.military.approval - 50) / 200 - theirs / 40000;
+        if (api.chance(Math.max(0.2, Math.min(0.85, base)))) {
+          r.alive = false;
+          for (const u of units(s)) if (u.commanderId === r.id) u.commanderId = null;
+          api.fx({ maat: 6, approval: { military: -5 } });
+          api.log(`${r.name}’s men break at the palace canal. The pretender dies on the field, and his name is chiselled from his own monuments.`);
+        } else {
+          api.log(`${r.name}’s chariots ride into Pi-Ramesses. ${s.pharaoh.name} reigned for one season.`);
+          api.end('usurped', `${r.name} took the crown from ${s.pharaoh.name}. Your line of the dynasty ends here.`);
+        }
+      },
+    },
+    {
+      id: 'share',
+      title: (s, ctx) => `Make ${son(s, ctx.rivalId)?.name} Your Heir`,
+      cost: 'Your brother becomes heir to the throne, ahead of your own children.',
+      fallout: 'Military +8%. Your own children’s mothers will hate it.',
+      risk: 'Your children lose the succession unless you take it back later, and taking it back means war.',
+      apply(s, api) {
+        const r = son(s, api.ctx.rivalId);
+        api.fx({ heir: r.id, approval: { military: 8 }, sons: { [r.id]: { loyalty: 30, legitimacy: 10 } } });
+        api.log(`${r.name} is proclaimed heir to the Two Lands. He kneels, smiling.`);
+      },
+    },
+    {
+      id: 'oracle',
+      title: 'Let Amun’s Oracle Choose',
+      available: (s) => s.blocs.priesthood.approval >= 45,
+      cost: '500 deben in offerings, and the Priesthood’s word becomes law.',
+      fallout: 'Priesthood +10%. If the god chooses you, Ma’at +8 and your rival is disgraced.',
+      risk: 'The priests decide who is king. Next time they may decide differently.',
+      apply(s, api) {
+        const r = son(s, api.ctx.rivalId);
+        api.fx({ gold: -Math.min(500, s.gold), approval: { priesthood: 10 } });
+        if (api.chance(0.5 + (s.blocs.priesthood.approval - 50) / 100)) {
+          api.fx({ maat: 8, sons: { [r.id]: { legitimacy: -30, loyalty: -10 } } });
+          r.role = 'King’s Brother (disgraced)';
+          api.log(`The barque of Amun bows to ${s.pharaoh.name}. ${r.name} has no answer to the god.`);
+        } else {
+          api.fx({ heir: r.id, maat: -6, sons: { [r.id]: { legitimacy: 15 } } });
+          api.log(`The barque of Amun bows to ${r.name}. The priests proclaim him heir, and ${s.pharaoh.name} rules on their sufferance.`);
+        }
+      },
+    },
+  ],
+};
+
+// ─────────────────────────────────────────────────────────────────────────
+const warDeclared = {
+  id: 'war_declared',
+  type: 'crisis',
+  title: (s, ctx) => `${s.realms[ctx.realm]?.name ?? 'An enemy'} Marches on Egypt`,
+  forcedOnly: true,
+  major: true,
+  brief: (s, ctx) => {
+    const r = s.realms[ctx.realm];
+    const p = s.provinces.find((x) => x.id === ctx.provinceId);
+    return [
+      `A runner arrives from the frontier: **${r.ruler}** has declared war. His army, about **${fmt(r.army)} men**, is marching on **${p?.name ?? 'the frontier'}**.`,
+      'The army will fight wherever its divisions are stationed. If no division stands on that front, the enemy will take what it wants. Open the World desk to set your war target and peace terms.',
+    ];
+  },
+  options: [
+    {
+      id: 'rally',
+      title: 'Send the Capital Divisions to the Front',
+      cost: 'Every infantry division and the Chariot Corps at the capital marches to the threatened front.',
+      fallout: 'Military +5%. The capital is left with the Medjay and the Sherden.',
+      risk: 'A palace with no army near it is a palace that can be taken.',
+      apply(s, api) {
+        const p = s.provinces.find((x) => x.id === api.ctx.provinceId);
+        const front = p ? ({ canaan: 'canaan', syria: 'canaan', mesopotamia: 'canaan', islands: 'canaan', sinai: 'canaan', kush: 'south', libya: 'west' })[p.region] : 'canaan';
+        for (const u of units(s)) if (u.station === 'capital' && (u.kind === 'infantry' || u.kind === 'chariots')) u.station = front;
+        api.fx({ approval: { military: 5 } });
+        api.log('Trumpets at Pi-Ramesses. The divisions march out, standards high.');
+      },
+    },
+    {
+      id: 'buy',
+      title: 'Buy Peace before the First Battle',
+      available: (s, ctx) => s.gold >= 600,
+      cost: '600 deben of gold to the enemy king.',
+      fallout: 'Ma’at −6. Military −5%.',
+      risk: 'A Pharaoh who pays tribute invites every neighbour to try the same.',
+      apply(s, api) {
+        const w = s.wars.find((x) => x.enemy === api.ctx.realm);
+        if (w) s.wars = s.wars.filter((x) => x !== w);
+        s.realms[api.ctx.realm].truceUntil = s.turn + 4;
+        s.realms[api.ctx.realm].relation = -20;
+        api.fx({ gold: -600, maat: -6, approval: { military: -5 } });
+        api.log('Gold buys a truce. The enemy goes home richer, and the scribes do not carve it on any wall.');
+      },
+    },
+    {
+      id: 'ally',
+      title: 'Call on Your Marriage Allies',
+      available: (s) => s.wives.some((w) => w.status === 'court' && s.realms[w.tie]) || s.flags.hattiTreaty !== false,
+      cost: 'You owe your allies a favour, and gold for their troops (300 deben).',
+      fallout: 'The enemy’s army is a quarter weaker on your front.',
+      risk: 'Allies remember what they gave, and will ask for it back.',
+      apply(s, api) {
+        const r = s.realms[api.ctx.realm];
+        r.army = Math.round(r.army * 0.75);
+        api.fx({ gold: -Math.min(300, s.gold) });
+        api.log('Envoys ride north with gold. Allied chariots harass the enemy’s flank before the first battle.');
+      },
+    },
+    {
+      id: 'stand',
+      title: 'Hold the Fortresses and Wait',
+      cost: 'The army stays where it is.',
+      fallout: 'No immediate cost.',
+      risk: 'If no division stands on that front, the enemy will take provinces.',
+      apply(s, api) {
+        api.log('Pharaoh orders the frontier forts to hold. Messengers wait for news.');
+      },
+    },
+  ],
+};
+
+const regencyChallenge = {
+  id: 'regency_challenge',
+  type: 'crisis',
+  title: 'The Regency Is Challenged',
+  forcedOnly: true,
+  major: true,
+  brief: (s) => {
+    const strong = [...s.army.generals].sort((a, b) => b.ambition - a.ambition)[0];
+    return [
+      `${s.regency?.regent ?? 'The regent'} rules in the name of a child, and the great men of Egypt have stopped pretending to obey. Regent’s authority: **${s.regency?.authority ?? 0}**.`,
+      `General **${strong?.name ?? 'Paramessu'}** and High Priest **${s.highPriest.name}** have both let it be known that they could protect the young king better.`,
+    ];
+  },
+  options: [
+    {
+      id: 'share',
+      title: 'Share the Regency with the General',
+      cost: 'A regency council: the General governs the army in the king’s name.',
+      fallout: 'Authority +40. Military +10%.',
+      risk: 'When the king comes of age, the General may not want to give the army back.',
+      apply(s, api) {
+        const g = [...s.army.generals].sort((a, b) => b.ambition - a.ambition)[0];
+        if (s.regency) s.regency.authority = Math.min(100, s.regency.authority + 40);
+        if (g) g.ambition = Math.min(100, g.ambition + 15);
+        api.fx({ approval: { military: 10 } });
+        api.log(`General ${g?.name ?? ''} joins the regency council. The barracks fall silent, and obedient.`);
+      },
+    },
+    {
+      id: 'priests',
+      title: 'Place the Young King under Amun’s Protection',
+      cost: 'Karnak becomes the guardian of the throne. New royal estates for Amun (−3% tax intake forever).',
+      fallout: 'Authority +35. Priesthood +12%.',
+      risk: 'The priests will expect to be thanked when the king is grown.',
+      apply(s, api) {
+        if (s.regency) s.regency.authority = Math.min(100, s.regency.authority + 35);
+        api.fx({ intake: 0.97, approval: { priesthood: 12 } });
+        api.log('The oracle of Amun declares the young king the god’s own son, and his regent the god’s servant. Nobody argues with Amun.');
+      },
+    },
+    {
+      id: 'crush',
+      title: 'Strike First: Arrest the Ringleaders',
+      cost: 'The Medjay move against the boldest nobles.',
+      fallout: 'If it works: authority +30, Ma’at −3. If not: authority collapses.',
+      risk: 'A failed purge makes a regent’s enemies bolder.',
+      apply(s, api) {
+        if (api.chance(0.4 + s.blocs.military.approval / 200)) {
+          if (s.regency) s.regency.authority = Math.min(100, s.regency.authority + 30);
+          api.fx({ maat: -3, approval: { bureaucracy: -6 } });
+          api.log('Three Nomarchs and a general’s deputy are seized at dawn. The others remember their oaths.');
+        } else {
+          if (s.regency) s.regency.authority = 5;
+          api.fx({ approval: { military: -10, bureaucracy: -8 } });
+          api.log('The arrests fail. The nobles close ranks against the regent.');
+        }
+      },
+    },
+    {
+      id: 'marry',
+      title: 'Bind the Strongest Noble by Marriage',
+      available: (s) => s.daughters.some((d) => d.alive && d.age >= 16 && !d.spouse && !d.abroad && d.office !== 'gods_wife'),
+      cost: 'A royal princess marries the most dangerous general.',
+      fallout: 'Authority +30. Military +6%.',
+      risk: 'A general married into the royal house has a claim of his own.',
+      apply(s, api) {
+        const d = s.daughters.find((x) => x.alive && x.age >= 16 && !x.spouse && !x.abroad && x.office !== 'gods_wife');
+        const g = [...s.army.generals].sort((a, b) => b.ambition - a.ambition)[0];
+        if (d && g) {
+          d.spouse = { name: `General ${g.name}`, kind: 'general', seed: g.seed, tie: 'military', origin: 'A general of the army' };
+          g.loyalty = Math.min(100, g.loyalty + 30);
+          g.royalKin = d.id;
+        }
+        if (s.regency) s.regency.authority = Math.min(100, s.regency.authority + 30);
+        api.fx({ approval: { military: 6 } });
+        api.log(`Princess ${d?.name} marries General ${g?.name}. The most dangerous man in Egypt is now family.`);
+      },
+    },
+  ],
+};
+
 export const CRISES = [
   hungerFlood,
   famineYear,
@@ -1321,4 +1565,7 @@ export const CRISES = [
   coptosFraud,
   libyanRaid,
   canaanRevolt,
+  successionWar,
+  warDeclared,
+  regencyChallenge,
 ];

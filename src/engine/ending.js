@@ -13,6 +13,10 @@ const CAUSES = {
 export function endReign(state, cause, detail) {
   state.phase = 'ended';
   state.ending = { cause, title: CAUSES[cause] || cause, detail, ...weighHeart(state, cause) };
+  // The dynasty's whole record, this ruler included.
+  const reigns = [...(state.dynasty || []), { name: state.pharaoh.name, throneName: state.pharaoh.throneName, years: state.year, score: state.ending.score, verdict: state.ending.verdict }];
+  state.ending.dynasty = reigns;
+  state.ending.dynastyScore = reigns.reduce((t, r) => t + r.score, 0);
   state.chronicle.push({
     turn: state.turn,
     year: state.year,
@@ -51,7 +55,7 @@ export function weighHeart(state, cause) {
     lines.push('The royal tomb was left unfinished. The heir begins his reign at −15 Legitimacy.');
   }
 
-  const reignYears = state.year - 9;
+  const reignYears = Math.min(30, state.year);
   score += reignYears;
   lines.push(`Years ruled in this chronicle: ${reignYears} → ${reignYears} points.`);
 

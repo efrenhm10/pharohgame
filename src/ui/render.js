@@ -1,5 +1,5 @@
 // HUD, dock and the Throne Room (the Strategic Briefing Dashboard, DESIGN.md §7).
-import { currentEvent, optionsFor, briefText } from '../engine/game.js';
+import { currentEvent, optionsFor, briefText, canPerform } from '../engine/game.js';
 import { BLOCS, BLOC_LABELS, BLOC_ICONS, FLOOD_BANDS, SEASON_MEANING } from '../engine/constants.js';
 import { monthlyBurnBreakdown, monthlyBurn, reserveMonths, surplusGrain } from '../engine/economy.js';
 import { cubitsLabel } from '../engine/flood.js';
@@ -39,15 +39,22 @@ export const chipHtml = (c) => {
 
 export const DESKS = [
   ['throne', '👑', 'Throne Room'],
-  ['granary', '🌾', 'Granaries'],
+  ['granary', '💰', 'Treasury'],
   ['army', '⚔️', 'Army'],
+  ['world', '🌍', 'The World'],
   ['family', '🪷', 'Royal Family'],
   ['court', '🏛️', 'Court'],
   ['nomes', '🗺️', 'Two Lands'],
-  ['foreign', '🌍', 'Foreign Courts'],
+  ['spies', '👁️', 'Spies'],
   ['monuments', '🧱', 'Monuments'],
-  ['chronicle', '📜', 'Chronicle'],
+  ['chronicle', '📜', 'Dynasty'],
 ];
+
+/** Quick command button usable anywhere (the desks module has richer controls). */
+export function quickCmd(canPerform, s, id, args, label) {
+  const ok = canPerform(s, id, args);
+  return `<button class="cmd" data-cmd="${id}" data-args="${esc(JSON.stringify(args))}" ${ok === true ? '' : 'disabled'} ${ok === true ? '' : `title="${esc(ok)}"`}>${label}</button>`;
+}
 
 export function renderHud(state) {
   const s = seasonName(state);
@@ -56,17 +63,22 @@ export function renderHud(state) {
   const stat = (label, value, cls = '') => `<div class="hstat ${cls}"><small>${label}</small><b>${value}</b></div>`;
   const pips = Array.from({ length: state.attention.max }, (_, i) => `<i class="${i < state.attention.left ? 'on' : ''}"></i>`).join('');
   const canEnd = state.phase === 'court';
+  const r = state.regency;
+  const who = r
+    ? `<span class="hud__portrait">${portrait({ kind: r.kind, seed: r.seed, age: r.age, sex: r.sex }, 46)}</span>
+      <div><b class="hud__name">Regent ${esc(r.regent)}</b><span class="hud__date">for ${esc(state.pharaoh.name)}, age ${state.pharaoh.age} · authority <b class="${r.authority < 30 ? 'bad' : ''}">${r.authority}</b> · Year ${state.year} · ${s}</span></div>`
+    : `<span class="hud__portrait">${portrait(state.pharaoh, 46)}</span>
+      <div><b class="hud__name">${esc(state.pharaoh.name)}</b><span class="hud__date">Year ${state.year} · ${s} <span class="muted">(${SEASON_MEANING[s]})</span></span></div>`;
+  const wars = state.wars?.length ? stat('At war', state.wars.map((w) => esc(state.realms[w.enemy].name.replace(/^(The|Free|Kingdom of) /, '').split(' ')[0])).join(', '), 'bad') : '';
   return `<div class="hud__inner">
-    <div class="hud__who">
-      <span class="hud__portrait">${portrait(state.pharaoh, 46)}</span>
-      <div><b class="hud__name">${esc(state.pharaoh.name)}</b><span class="hud__date">Year ${state.year} · ${s} <span class="muted">(${SEASON_MEANING[s]})</span></span></div>
-    </div>
+    <div class="hud__who">${who}</div>
     <div class="hud__stats">
       ${stat('Ma’at', `${state.maat}`, state.maat >= 50 ? 'good' : state.maat < 25 ? 'bad' : 'warn')}
       ${stat('Grain', `${k(state.grain.royal)} · ${rm.toFixed(1)} mo`, rm < 2 ? 'bad' : rm >= 6 ? 'good' : '')}
       ${stat('Gold', `${fmt(state.gold)} dbn`)}
       ${stat('Army', `${k(totalMen(state))} · ${Math.round(avgMorale(state))}% morale`, avgMorale(state) < 35 ? 'bad' : '')}
       ${stat('Heir', h ? `${esc(h.name)} (${h.legitimacy})` : 'None', h ? '' : 'bad')}
+      ${wars}
       <div class="hstat attention" title="Royal Attention: what Pharaoh can personally see to this season"><small>Royal Attention</small><b class="pips">${pips} <span>${state.attention.left}/${state.attention.max}</span></b></div>
     </div>
     <button class="btn btn--primary hud__end" data-action="advance" ${canEnd ? '' : 'disabled'} title="${canEnd ? 'End the season' : 'Seal this season’s decree in the Throne Room first'}">${canEnd ? 'End the season →' : 'Decree pending'}</button>
@@ -129,7 +141,8 @@ function stateOfRealm(state) {
         ${state.grain.sealed ? `<br>Sealed reserve: <strong>${fmt(state.grain.sealed)} khar</strong>.` : ''}
         <br>Gold: <strong>${fmt(state.gold)} deben</strong> <span class="muted">(diplomatic reserve ${fmt(state.goldReserve)})</span>.
         Amun’s granaries <span class="muted">(not yours)</span>: ${fmt(state.grain.temple)} khar.
-        ${state.arrears.army || state.arrears.workforce ? `<br><span class="bad">Arrears: army ${state.arrears.army} mo · workforce ${state.arrears.workforce} mo.</span>` : ''}
+        ${state.arrears.army || state.arrears.workforce ? `<br><span class="bad">Arrears: army ${state.arrears.army} mo · workforce ${state.arrears.workforce} mo.</span>
+          <span class="cmds cmds--inline">${state.arrears.army ? quickCmd(canPerform, state, 'army.pay', { months: 1, with: 'grain' }, `Pay 1 month (${k(state.burn.army)} khar)`) + quickCmd(canPerform, state, 'army.pay', { months: 'all', with: 'grain' }, 'Pay it all in grain') + quickCmd(canPerform, state, 'army.pay', { months: 'all', with: 'gold' }, 'Pay it all in gold') : ''}${state.arrears.workforce ? quickCmd(canPerform, state, 'army.pay_workforce', {}, 'Pay the tomb-builders') : ''}<button class="cmd" data-tab="granary">Buy grain…</button></span>` : ''}
         ${state.armyRation < 1 ? `<br><span class="warn">The army is on ${state.armyRation === 0.5 ? 'half' : 'reduced'} rations.</span>` : ''}
       </li>
       <li><strong>The Dynastic Succession:</strong>
@@ -215,7 +228,7 @@ function outcome(state, { withButton = true } = {}) {
     <div class="chips">${o.chips.filter((c) => c.delta).map(chipHtml).join('')}</div>
     ${withButton ? `<div class="outcome__next">
       <p class="muted">The decree is sealed. You have <strong>${state.attention.left} Royal Attention</strong> left: visit the desks to give orders, or end the season.</p>
-      <div class="row">${DESKS.slice(1, 7).map(([id, icon, name]) => `<button class="btn btn--ghost" data-tab="${id}">${icon} ${name}</button>`).join('')}</div>
+      <div class="row">${DESKS.slice(1, 9).map(([id, icon, name]) => `<button class="btn btn--ghost" data-tab="${id}">${icon} ${name}</button>`).join('')}</div>
       <button class="btn btn--primary" data-action="advance">End the season → <kbd>Enter</kbd></button>
     </div>` : ''}
   </section>`;
@@ -230,12 +243,37 @@ function ended(state) {
     <ul>${e.lines.map((l) => `<li>${md(l)}</li>`).join('')}</ul>
     <p><strong>Succession:</strong> ${md(e.succession)}</p>
     <p class="verdict"><span class="verdict__score">${e.score}</span> ${md(e.verdict)}</p>
-    <button class="btn btn--primary" data-action="new">Begin a new reign</button>
+    ${e.dynasty?.length > 1 ? `<h3>Your dynasty</h3><ol class="chronicle">${e.dynasty.map((r) => `<li><strong>${esc(r.name)}</strong> (${esc(r.throneName || '')}): ${r.years} years, score ${r.score}</li>`).join('')}</ol><p><strong>Dynasty score: ${e.dynastyScore}</strong></p>` : ''}
+    <button class="btn btn--primary" data-action="new">Begin a new dynasty</button>
+  </section>`;
+}
+
+function regencyPanel(state) {
+  const r = state.regency;
+  if (!r) return '';
+  return `<section class="panel regency">
+    <div class="official">${portrait({ kind: r.kind, seed: r.seed, age: r.age, sex: r.sex }, 64)}<div>
+      <h2>🦅 THE REGENCY</h2>
+      <p>You govern as <strong>${esc(r.regent)}</strong>, ${r.who === 'mother' ? 'the King’s Mother' : 'the Vizier'}, in the name of ${esc(state.pharaoh.name)} (age ${state.pharaoh.age}) until he comes of age at ${r.untilAge}. While your authority is weak, Nomarchs, generals and priests help themselves to the crown’s power every season.</p>
+      <div class="bars"><span>Authority</span>${meter(r.authority, { label: 'regent authority' })}<b>${r.authority}</b></div>
+      <div class="cmds">${quickCmd(canPerform, state, 'regency.assert', {}, 'Assert your authority ⚡1')}${quickCmd(canPerform, state, 'regency.bribe', {}, 'Buy the nobles (300 dbn) ⚡1')}${quickCmd(canPerform, state, 'regency.present', {}, 'Present the young king ⚡1')}</div>
+    </div></div>
+  </section>`;
+}
+
+function lastReignPanel(state) {
+  const l = state.lastReign;
+  if (!l || state.dynasty?.[state.dynasty.length - 1]?.name !== l.name || state.year !== 1 || state.season !== 0) return '';
+  return `<section class="panel ending">
+    <h2>⚖️ THE WEIGHING OF THE HEART: ${esc(l.name)}</h2>
+    <ul>${l.lines.map((x) => `<li>${md(x)}</li>`).join('')}</ul>
+    <p class="verdict"><span class="verdict__score">${l.score}</span> ${md(l.verdict)}</p>
+    <p class="muted">The dynasty continues. You now rule as <strong>${esc(state.pharaoh.name)}</strong>.</p>
   </section>`;
 }
 
 export function renderThrone(state) {
   if (state.phase === 'ended') return outcome(state, { withButton: false }) + seasonReport(state) + ended(state);
-  if (state.phase === 'court') return outcome(state) + commandsLog(state) + seasonReport(state) + stateOfRealm(state);
-  return seasonReport(state) + commandsLog(state) + stateOfRealm(state) + briefing(state);
+  if (state.phase === 'court') return outcome(state) + commandsLog(state) + regencyPanel(state) + seasonReport(state) + stateOfRealm(state);
+  return lastReignPanel(state) + seasonReport(state) + regencyPanel(state) + commandsLog(state) + stateOfRealm(state) + briefing(state);
 }

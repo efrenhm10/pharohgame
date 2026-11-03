@@ -18,6 +18,9 @@ import { chooseBriefing } from './rotation.js';
 import { endReign } from './ending.js';
 import { SON_NAMES, DAUGHTER_NAMES } from '../content/names.js';
 import { armySeason, syncArmyBurn, coupThreat } from './army.js';
+import { succeed, grandchildrenSeason, ageGrandchildren, regencySeason, childMortality } from './dynasty.js';
+import { worldSeason, aiWars, provinceGrain, goldLedger } from './world.js';
+import { spySeason, SPY_UPKEEP } from './spies.js';
 import { randTrait, seedNum } from './people.js';
 import { fmt } from './util.js';
 
@@ -71,6 +74,18 @@ export function endSeason(state) {
   // Standing policies (Granaries desk).
   policySeason(state, report);
 
+  // Provinces abroad send grain home.
+  const pg = Math.round(provinceGrain(state));
+  if (pg > 0) {
+    state.grain.royal += pg;
+    report.push(`Grain barges from the provinces abroad brought ${pg.toLocaleString('en-US')} khar.`);
+  }
+
+  // The world turns: wars, revolts, buildings, expeditions, spies, the regency.
+  worldSeason(state, report);
+  spySeason(state, report);
+  regencySeason(state, report);
+
   // The army's morale; the nomes' loyalty; the temple loan.
   armySeason(state, report);
   nomesSeason(state, report);
@@ -82,8 +97,17 @@ export function endSeason(state) {
   // 4. The court.
   courtSeason(state, report);
 
-  // 5. Nubian tribute at the end of Shemu.
-  if (endingSeason === 2) collectTribute(state, report);
+  // 5. The year's gold at the end of Shemu.
+  if (endingSeason === 2) {
+    collectTribute(state, report);
+    const ledger = goldLedger(state);
+    const upkeep = (state.spies || []).length * SPY_UPKEEP;
+    state.gold = Math.max(0, state.gold + ledger.total - upkeep);
+    report.push(`**The treasury’s year:** provinces, tribute, workshops and mines brought ${ledger.total >= 0 ? '+' : '−'}${Math.abs(ledger.total).toLocaleString('en-US')} deben${upkeep ? `; the spies cost ${upkeep}` : ''}.`);
+    state.history = state.history || [];
+    state.history.push({ year: state.year, gold: state.gold, grain: state.grain.royal, maat: state.maat, provinces: state.provinces.filter((p) => p.owner === 'egypt').length });
+    if (state.history.length > 40) state.history.shift();
+  }
 
   // 6. Power-block drift toward a Ma'at-set baseline.
   const target = 25 + state.maat * 0.5;
@@ -107,9 +131,13 @@ export function endSeason(state) {
     report.push(`**Pharaoh falls ill with a fever.** Health −${dmg}. The physicians call on Sekhmet.`);
   }
   if (state.pharaoh.health <= 0) {
-    state.seasonReport = report;
-    endReign(state, 'death', 'The Horus has flown to the horizon. Pharaoh is dead.');
-    return;
+    const dead = state.pharaoh.name;
+    if (!succeed(state, report)) {
+      state.seasonReport = report;
+      endReign(state, 'death', `${dead} has flown to the horizon, and no one of his blood is left to take the crown. The dynasty is over.`);
+      return;
+    }
+    newSeasonCourt(state);
   }
   if (state.pharaoh.health < 30) report.push('The court physicians whisper that Pharaoh will not see many more floods.');
 
@@ -139,6 +167,13 @@ function newYear(state, report) {
   for (const s of livingSons(state)) s.age += 1;
   for (const d of state.daughters || []) d.age += 1;
   for (const w of state.wives) w.age = (w.age || 30) + 1;
+  ageGrandchildren(state);
+  childMortality(state, report);
+  aiWars(state, report);
+  if (state.regency && state.pharaoh.age >= state.regency.untilAge) {
+    report.push(`**${state.pharaoh.name} comes of age.** The regency of ${state.regency.regent} is over; Pharaoh rules alone.`);
+    state.regency = null;
+  }
   for (const g of state.army?.generals || []) g.age = (g.age || 40) + 1;
 
   // Yearly aging.
@@ -257,13 +292,15 @@ function courtSeason(state, report) {
     if (mother && mother.satisfaction < 40) s.loyalty = clamp(s.loyalty - 2, 0, 100);
   }
 
+  grandchildrenSeason(state, report);
+
   // Births.
   const p = state.pregnancy;
   if (p && state.turn + 1 >= p.dueTurn) {
     state.pregnancy = null;
     birth(state, p.wifeId, report);
-  } else if (!p) {
-    for (const w of courtWives(state)) {
+  } else if (!p && state.pharaoh.sex !== 'f') {
+    for (const w of state.wives.filter((x) => x.status === 'court')) {
       if (chance(state, 0.05)) {
         state.pregnancy = { wifeId: w.id, dueTurn: state.turn + 3 };
         report.push(`The physicians announce that ${w.name} is with child.`);
@@ -274,14 +311,23 @@ function courtSeason(state, report) {
 }
 
 function birth(state, wifeId, report) {
-  const w = state.wives.find((x) => x.id === wifeId);
+  // A female Pharaoh bears her own heirs.
+  const w = wifeId === 'pharaoh'
+    ? { id: 'pharaoh', name: state.pharaoh.name, title: 'Great', tie: 'none', satisfaction: 0, influence: 0 }
+    : state.wives.find((x) => x.id === wifeId);
   if (!w) return;
+  if (wifeId === 'pharaoh') {
+    state.pharaoh.health = clamp(state.pharaoh.health - 8, 0, 100);
+    report.push('The birth is hard. Pharaoh’s health −8.');
+  }
   if (chance(state, 0.5)) {
     const used = new Set(state.sons.map((s) => s.name));
     const name = SON_NAMES.find((n) => !used.has(n)) || `Son of Year ${state.year}`;
     const id = `son-${state.turn}`;
-    const legitimacy = w.title.startsWith('Great') ? 55 : w.tie === 'hatti' || w.tie === 'babylon' ? 40 : 30;
-    state.sons.push({ id, kind: 'prince', sex: 'm', seed: seedNum(state), name, age: 0, motherId: w.id, legitimacy, loyalty: 80, role: 'Infant King’s Son', trait: randTrait(state), edu: null, skill: null, spouse: null, alive: true });
+    const divine = Boolean(w.royalBlood);
+    const legitimacy = (w.title.startsWith('Great') ? 55 : w.tie === 'hatti' || w.tie === 'babylon' ? 40 : 30) + (divine ? 15 : 0);
+    const trait = divine && chance(state, 0.3) ? 'frail' : randTrait(state);
+    state.sons.push({ id, kind: 'prince', sex: 'm', seed: seedNum(state), name, age: 0, motherId: w.id, legitimacy: w.id === 'pharaoh' ? 65 : legitimacy, loyalty: 80, role: 'Infant King’s Son', rel: 'child', trait, divine, edu: null, skill: null, spouse: null, alive: true });
     w.satisfaction = clamp(w.satisfaction + 15, 0, 100);
     w.influence = clamp(w.influence + 10, 0, 100);
     state.forcedOpportunity = { eventId: 'son_born', ctx: { sonId: id }, since: state.turn };
@@ -290,7 +336,7 @@ function birth(state, wifeId, report) {
     state.daughters = state.daughters || [];
     const usedD = new Set(state.daughters.map((d) => d.name));
     const name = DAUGHTER_NAMES.find((n) => !usedD.has(n)) || `Daughter of Year ${state.year}`;
-    state.daughters.push({ id: `dau-${state.turn}`, kind: 'princess', sex: 'f', seed: seedNum(state), name, age: 0, motherId: w.id, role: 'King’s Daughter', trait: randTrait(state), edu: null, skill: null, spouse: null, alive: true });
+    state.daughters.push({ id: `dau-${state.turn}`, kind: 'princess', sex: 'f', seed: seedNum(state), name, age: 0, motherId: w.id, role: 'King’s Daughter', rel: 'child', legitimacy: w.title.startsWith('Great') ? 40 : 25, loyalty: 85, trait: randTrait(state), edu: null, skill: null, spouse: null, alive: true });
     w.satisfaction = clamp(w.satisfaction + 5, 0, 100);
     report.push(`${w.name} has borne Pharaoh a daughter, Princess ${name}.`);
   }
@@ -298,7 +344,7 @@ function birth(state, wifeId, report) {
 
 function thresholdChecks(state, report) {
   const mil = state.blocs.military.approval;
-  const coupCooldown = state.usedEvents.march_on_palace > state.turn - 3;
+  const coupCooldown = state.usedEvents.march_on_palace > state.turn - 6;
   if (mil < 30 && state.arrears.army >= 2 && !coupCooldown) {
     const p = ((30 - mil) * 2 + state.arrears.army * 5) / 100;
     if (chance(state, p)) forceEvent(state, 'march_on_palace', 100);
@@ -309,7 +355,7 @@ function thresholdChecks(state, report) {
 
   // A disloyal commander with troops at the capital may try his luck.
   const threat = coupThreat(state);
-  if (threat && threat.risk > 0.05 && !(state.usedEvents.march_on_palace > state.turn - 3)) {
+  if (threat && threat.risk > 0.08 && !(state.usedEvents.march_on_palace > state.turn - 6)) {
     if (chance(state, threat.risk)) forceEvent(state, 'march_on_palace', 100, { leaderId: threat.person.id });
     else if (threat.risk > 0.15) report.push(`*${threat.person.name} has ${fmt(threat.men)} men at the capital, and his officers dine with him every night.*`);
   }
@@ -390,7 +436,7 @@ function templeLoanSeason(state, report) {
 }
 
 export function newSeasonCourt(state) {
-  const base = 3 + (state.vizier.competence >= 70 ? 1 : 0) - (state.pharaoh.health < 35 ? 1 : 0);
+  const base = 3 + (state.vizier.competence >= 70 ? 1 : 0) - (state.pharaoh.health < 35 ? 1 : 0) - (state.regency ? 1 : 0);
   state.attention = { max: base, left: base };
   state.commands = [];
   state.shortlists = {};

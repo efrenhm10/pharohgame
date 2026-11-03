@@ -106,6 +106,17 @@ test('every desk command can run from a fresh game without throwing', () => {
     'nome.revoke': [{ nomeId: 'asyut' }], 'nome.replace': [{ nomeId: 'hare' }], 'nome.canal': [{ nomeId: 'memphis' }],
     'foreign.gift': [{ realm: 'babylon', size: 'lavish' }], 'foreign.trade': [{ realm: 'hatti' }, { realm: 'alashiya' }, { realm: 'babylon' }],
     'foreign.tribute': [{}], 'monument.start': [{ catalogId: 'obelisks' }], 'monument.pause': [{ id: 'none' }],
+    'army.pay': [{ months: 1, with: 'grain' }, { months: 'all', with: 'gold' }], 'army.pay_workforce': [{}],
+    'granary.bulk': [{ realm: 'alashiya' }], 'nome.requisition': [{ nomeId: 'delta' }],
+    'build': [{ kind: 'nome', id: 'coptos', type: 'harbor' }, { kind: 'province', id: 'wawat', type: 'mine' }],
+    'expedition': [{ type: 'turquoise' }, { type: 'punt' }],
+    'war.declare': [{ realm: 'libu', target: 'marmarica' }, { realm: 'hatti', target: 'kadesh' }],
+    'war.target': [{ warId: 'none', provinceId: 'siwa' }], 'war.peace': [{ warId: 'none', terms: 'white' }],
+    'province.integrate': [{ id: 'byblos' }], 'province.garrison_pay': [{ id: 'gezer' }],
+    'spy.recruit': [{ type: 'wife', target: 'henuttawy' }, { type: 'realm', target: 'hatti' }], 'spy.recall': [{ spyId: 'x' }],
+    'spy.arrest': [{ type: 'wife', target: 'henuttawy' }], 'spy.sabotage': [{ target: 'hatti' }],
+    'regency.assert': [{}], 'regency.bribe': [{}], 'regency.present': [{}],
+    'family.appoint': [{ childId: 'khaemopet', post: 'nome:hare' }, { childId: 'meritamun', post: 'estates' }, { childId: 'khaemopet', post: 'vizier' }],
   };
   for (const id of Object.keys(ACTIONS)) {
     assert.ok(argsFor[id], `test needs args for ${id}`);
@@ -147,6 +158,15 @@ test('fuzz: random reigns mixing decrees and desk commands stay sane', () => {
         if (id === 'granary.palace') a.level = pick(['lavish', 'normal', 'austere']);
         if (id === 'granary.tax') a.level = pick(['light', 'standard', 'heavy']);
         if (id === 'family.marry' && child) a.matchId = matchOptions(s, child)[0]?.id;
+        Object.assign(a, {
+          months: pick([1, 'all']), with: pick(['grain', 'gold']), kind: pick(['nome', 'province']), type: pick(['harbor', 'workshop', 'temple', 'fort', 'mine', 'punt', 'cedar', 'turquoise', 'unit', 'wife', 'nome', 'realm']),
+          terms: pick(['annex', 'vassal', 'tribute', 'white', 'concede']), warId: s.wars[0]?.id, post: pick(['vizier', 'overseer', 'estates', 'chantress', `nome:${pick(pool.nomeId)}`, 'province:gaza']),
+        });
+        if (id === 'build') a.id = a.kind === 'nome' ? pick(pool.nomeId) : pick(s.provinces.map((p) => p.id));
+        if (id === 'war.declare') { const p = pick(s.provinces.filter((x) => x.owner !== 'egypt')); if (p) { a.realm = p.owner; a.target = p.id; } }
+        if (id === 'war.target') a.provinceId = pick(s.provinces.map((p) => p.id));
+        if (id.startsWith('spy.')) { a.target = a.type === 'realm' ? pick(pool.realm) : a.type === 'wife' ? pick(pool.wifeId) : a.type === 'nome' ? pick(pool.nomeId) : a.type === 'unit' ? pick(pool.unitId) : a.target; a.spyId = s.spies[0]?.id; }
+        if (id.startsWith('province.')) a.id = pick(s.provinces.map((p) => p.id));
         if (id === 'court.appoint') a.candidateId = s.shortlists?.[a.office]?.[0]?.id || `son:${pick(pool.sonId)}`;
         if (canPerform(s, id, a) === true) perform(s, id, a);
         if (s.phase === 'ended') break;

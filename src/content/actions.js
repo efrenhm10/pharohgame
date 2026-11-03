@@ -5,13 +5,14 @@
 //   available?(s,a) → true | 'reason it is not', run(s, a, api)
 // }
 import { fmt, clamp } from '../engine/util.js';
-import { heir, son, wife, sonsOf, isAdult, courtWives, designateHeir } from '../engine/realm.js';
+import { heir, son, wife, sonsOf, isAdult, kingWives, designateHeir, child as anyChild } from '../engine/realm.js';
 import { unit, units, syncArmyBurn, commander, armyPower, STATIONS } from '../engine/army.js';
 import { SCHOOLS, FOREIGN_BRIDES, FEMALE_NAMES, MALE_NAMES, candidates, seedNum, newId } from '../engine/people.js';
 import { MONUMENT_CATALOG } from './monuments.js';
+import { MORE_ACTIONS } from './actions2.js';
 
 const nome = (s, id) => s.nomes.find((n) => n.id === id);
-const child = (s, id) => s.sons.find((c) => c.id === id && c.alive) || (s.daughters || []).find((c) => c.id === id && c.alive);
+const child = (s, id) => { const c = anyChild(s, id); return c && c.alive ? c : null; };
 const hashPick = (arr, key) => {
   let h = 0;
   for (const ch of key) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
@@ -42,7 +43,7 @@ export function matchOptions(s, c) {
     if (!s.flags.godsWife)
       out.push({ id: 'gods_wife', label: 'Consecrate her as God’s Wife of Amun', hint: 'She never marries. Priesthood +12%, Ma’at +3, and a royal voice inside Karnak.' });
     if (h && h.alive && isAdult(h) && !h.spouse && h.motherId !== c.motherId)
-      out.push({ id: 'heir', label: `Marry her to Crown Prince ${h.name}`, hint: 'A doubly royal heir: his Legitimacy +15.' });
+      out.push({ id: 'heir', label: `Marry her to Crown Prince ${h.name}`, hint: 'The divine blood: his Legitimacy +15, she becomes his Great Royal Wife, and their children are born with +15 Legitimacy, which locks the palace against rival mothers. But about 3 in 10 children of such marriages are born frail and may die young.' });
     for (const n of weakNomes)
       out.push({ id: `nome:${n.id}`, label: `The heir of ${n.nomarch}, Nomarch of ${n.name}`, hint: `Binds a wavering nome to the crown: loyalty +25 (now ${n.loyalty}). His family gains royal kin.` });
     for (const g of s.army.generals.slice(0, 2))
@@ -55,11 +56,11 @@ export function matchOptions(s, c) {
       out.push({ id: `nome:${n.id}`, label: `${hashPick(FEMALE_NAMES, c.id + n.id)}, daughter of Nomarch ${n.nomarch} of ${n.name}`, hint: `Nome loyalty +20. But ${c.name} gains a power base of his own.` });
     for (const r of ['hatti', 'babylon', 'alashiya'])
       if (s.realms[r].relation >= 20)
-        out.push({ id: `foreign:${r}`, label: `${hashPick(FOREIGN_BRIDES[r] || FEMALE_NAMES, c.id)}, a princess of ${s.realms[r].name}`, hint: `${s.realms[r].name} relation +15, a dowry of 300 deben, ${c.name}’s Legitimacy +5.` });
+        out.push({ id: `foreign:${r}`, label: `${hashPick(FOREIGN_BRIDES[r] || FEMALE_NAMES, c.id)}, a princess of ${s.realms[r].name}`, hint: `A marriage alliance: ${s.realms[r].name} relation +15 and a dowry of 300 deben.${c.id === s.heirId ? ` When ${c.name} is king and she is his queen, ${s.realms[r].name} will not make war on Egypt. But the priests count her children’s blood as half foreign.` : ` ${c.name}’s Legitimacy +5.`}` });
     out.push({ id: 'priestly', label: `${hashPick(FEMALE_NAMES, c.id + 'hp')}, niece of the High Priest`, hint: 'Priesthood +6%, Legitimacy +3.' });
     if (c.id === s.heirId) {
       const sis = (s.daughters || []).find((d) => d.alive && isAdult(d) && !d.spouse && d.office !== 'gods_wife' && d.motherId !== c.motherId);
-      if (sis) out.push({ id: `sister:${sis.id}`, label: `Princess ${sis.name}, his half-sister`, hint: 'The royal way: Legitimacy +15, both mothers pleased.' });
+      if (sis) out.push({ id: `sister:${sis.id}`, label: `Princess ${sis.name}, his half-sister`, hint: 'The divine blood: Legitimacy +15, both mothers pleased, and children born with +15 Legitimacy. But about 3 in 10 are born frail, and no foreign king gains a reason to keep the peace.' });
     }
   }
   return out;
@@ -390,16 +391,18 @@ export const ACTIONS = {
     label: (s, a) => `Marry ${child(s, a.childId)?.name}`,
     available(s, a) {
       const c = child(s, a.childId);
-      if (!c) return 'No such child.';
+      if (!c || !c.alive) return 'No such child.';
       if (c.spouse || c.office === 'gods_wife') return 'Already married or consecrated.';
       if (!isAdult(c)) return 'Too young to marry (16).';
+      if (String(a.matchId).startsWith('nome:') && nome(s, a.matchId.slice(5))) return true;
       return matchOptions(s, c).some((m) => m.id === a.matchId) || 'That match is not available.';
     },
     run(s, a, api) {
       const c = child(s, a.childId);
-      const m = matchOptions(s, c).find((x) => x.id === a.matchId);
       const [kind, ref] = a.matchId.split(':');
+      const m = matchOptions(s, c).find((x) => x.id === a.matchId) || { label: `${hashPick(FEMALE_NAMES, c.id + ref)}, daughter of Nomarch ${nome(s, ref)?.nomarch}` };
       const fx = { approval: {}, sons: {}, wives: {} };
+      const title = c.sex === 'm' ? 'Prince' : 'Princess';
       if (kind === 'gods_wife') {
         c.office = 'gods_wife';
         c.role = 'God’s Wife of Amun';
@@ -410,27 +413,29 @@ export const ACTIONS = {
       } else if (kind === 'heir' || kind === 'sister') {
         const h = kind === 'heir' ? heir(s) : c;
         const bride = kind === 'heir' ? c : child(s, ref);
-        h.spouse = `Princess ${bride.name}`;
-        bride.spouse = `Crown Prince ${h.name}`;
+        h.spouse = { name: `Princess ${bride.name}`, ref: bride.id, kind: 'queen', seed: bride.seed, age: bride.age, tie: 'none', origin: `Daughter of ${s.pharaoh.name}` };
+        bride.spouse = { name: `Crown Prince ${h.name}`, ref: h.id };
         fx.sons[h.id] = { legitimacy: 15 };
         fx.wives[bride.motherId] = 10;
         fx.wives[h.motherId] = 10;
-        api.log(`Crown Prince ${h.name} marries his half-sister ${bride.name}. The heir’s claim is now royal twice over.`);
+        api.log(`Crown Prince ${h.name} marries his half-sister ${bride.name}. The heir’s claim is now royal twice over, and she will be his Great Royal Wife.`);
       } else if (kind === 'nome') {
         const n = nome(s, ref);
         n.loyalty = clamp(n.loyalty + (c.sex === 'f' ? 25 : 20), 0, 100);
         n.royalKin = c.id;
         fx.approval.bureaucracy = 4;
-        c.spouse = c.sex === 'f' ? `the heir of Nomarch ${n.nomarch}` : m.label.split(',')[0];
+        c.spouse = c.sex === 'f'
+          ? { name: `${hashPick(MALE_NAMES, n.id + c.id)}, heir of Nomarch ${n.nomarch}`, kind: 'consort', seed: seedNum(s), age: c.age + 3, tie: 'bureaucracy', origin: `Son of Nomarch ${n.nomarch} of ${n.name}`, nomeId: n.id }
+          : { name: m.label.split(',')[0], kind: 'wife', seed: seedNum(s), age: Math.max(16, c.age - 3), tie: 'bureaucracy', origin: `Daughter of Nomarch ${n.nomarch} of ${n.name}`, nomeId: n.id };
         if (c.sex === 'm') fx.sons[c.id] = { legitimacy: 3 };
-        api.log(`${c.sex === 'm' ? 'Prince' : 'Princess'} ${c.name} is married into the house of ${n.nomarch} of ${n.name}. The nome celebrates for a week.`);
+        api.log(`${title} ${c.name} is married into the house of ${n.nomarch} of ${n.name}. The nome celebrates for a week.`);
       } else if (kind === 'general') {
         const g = s.army.generals.find((x) => x.id === ref);
         g.loyalty = clamp(g.loyalty + 25, 0, 100);
         g.ambition = clamp(g.ambition + 10, 0, 100);
         g.royalKin = c.id;
         fx.approval.military = 5;
-        c.spouse = `General ${g.name}`;
+        c.spouse = { name: `General ${g.name}`, kind: 'general', seed: g.seed, age: g.age, tie: 'military', origin: 'A general of the army' };
         api.log(`Princess ${c.name} marries General ${g.name}. The army has a royal son-in-law now.`);
       } else if (kind === 'foreign') {
         const r = s.realms[ref];
@@ -438,23 +443,25 @@ export const ACTIONS = {
           r.relation = clamp(r.relation + 35, -100, 100);
           Object.assign(fx, { maat: -6, gold: 600 });
           fx.approval.priesthood = -8;
-          c.spouse = r.ruler;
-          c.alive = true;
+          c.spouse = { name: r.ruler, kind: 'consort', seed: seedNum(s), tie: ref, origin: r.name };
           c.abroad = ref;
           c.role = `Queen in ${r.name}`;
+          if (s.heirId === c.id) s.heirId = null;
           api.log(`Princess ${c.name} sails for ${r.name} to marry ${r.ruler}. Foreign courts cannot believe it, and the priests of Amun cannot forgive it.`);
         } else {
           r.relation = clamp(r.relation + 15, -100, 100);
           Object.assign(fx, { gold: 300 });
           fx.sons[c.id] = { legitimacy: 5 };
-          c.spouse = m.label.split(',')[0];
-          api.log(`Prince ${c.name} marries ${c.spouse}. ${r.name} sends a dowry and its blessing.`);
+          c.spouse = { name: m.label.split(',')[0], kind: ref === 'hatti' ? 'wife-hatti' : ref === 'babylon' ? 'wife-babylon' : 'wife', seed: seedNum(s), age: Math.max(16, c.age - 4), tie: ref, origin: `A princess of ${r.name}` };
+          api.log(`Prince ${c.name} marries ${c.spouse.name}. ${r.name} sends a dowry and its blessing.`);
         }
       } else if (kind === 'priestly') {
         fx.approval.priesthood = 6;
         fx.sons[c.id] = { legitimacy: 3 };
-        c.spouse = m.label.split(',')[0];
-        api.log(`Prince ${c.name} marries into the High Priest’s family. Karnak approves.`);
+        c.spouse = c.sex === 'f'
+          ? { name: m.label.split(',')[0], kind: 'consort', seed: seedNum(s), age: c.age + 2, tie: 'priesthood', origin: 'Nephew of the High Priest of Amun' }
+          : { name: m.label.split(',')[0], kind: 'wife', seed: seedNum(s), age: Math.max(16, c.age - 3), tie: 'priesthood', origin: 'Niece of the High Priest of Amun' };
+        api.log(`${title} ${c.name} marries into the High Priest’s family. Karnak approves.`);
       }
       api.fx(fx);
     },
@@ -462,21 +469,35 @@ export const ACTIONS = {
   'family.designate': {
     desk: 'family',
     cost: () => 2,
-    label: (s, a) => `Name ${son(s, a.sonId)?.name} Crown Prince`,
-    available: (s, a) => (s.heirId === a.sonId ? 'He is already the heir.' : son(s, a.sonId)?.alive || 'No such son.'),
+    label: (s, a) => `Name ${child(s, a.sonId)?.name} heir to the throne`,
+    available(s, a) {
+      const c = child(s, a.sonId);
+      if (!c || !c.alive || c.abroad) return 'No such prince or princess.';
+      if (s.heirId === a.sonId) return 'Already the heir.';
+      if (c.office === 'gods_wife') return 'The God’s Wife of Amun cannot be heir.';
+      return true;
+    },
     run(s, a, api) {
       const old = heir(s);
-      const nu = son(s, a.sonId);
+      const nu = child(s, a.sonId);
       const fx = { sons: { [nu.id]: { legitimacy: 10, loyalty: 10 } }, wives: { [nu.motherId]: 25 }, approval: {} };
       if (old) {
         fx.sons[old.id] = { legitimacy: -10, loyalty: -20 };
         if (old.motherId !== nu.motherId) fx.wives[old.motherId] = -30;
       }
       const nuMother = wife(s, nu.motherId);
-      if (nuMother && !nuMother.title.startsWith('Great')) fx.approval.priesthood = -5;
+      if (nuMother && !nuMother.title.startsWith('Great') && !nuMother.title.startsWith('King’s Mother')) fx.approval.priesthood = -5;
+      if (nu.sex === 'f') {
+        fx.approval.priesthood = (fx.approval.priesthood || 0) - 10;
+        fx.approval.military = -5;
+        fx.maat = -4;
+      }
+      if (nu.rel === 'sibling') fx.sons[nu.id].legitimacy = 5;
       designateHeir(s, nu.id);
       api.fx(fx);
-      api.log(`Prince ${nu.name} is proclaimed Crown Prince in the Hall of Appearances.${old ? ` ${old.name} bows, and does not look up.` : ''}`);
+      api.log(nu.sex === 'f'
+        ? `Princess ${nu.name} is proclaimed heir to the Two Lands. The priests search the temple archives for a precedent, and find Hatshepsut.`
+        : `${nu.rel === 'sibling' ? 'Your brother ' : 'Prince '}${nu.name} is proclaimed Crown Prince in the Hall of Appearances.${old ? ` ${old.name} bows, and does not look up.` : ''}`);
     },
   },
   'family.ptah': {
@@ -485,8 +506,8 @@ export const ACTIONS = {
     label: (s, a) => `Make ${son(s, a.sonId)?.name} High Priest of Ptah`,
     available(s, a) {
       const sn = son(s, a.sonId);
-      if (!sn || !isAdult(sn)) return 'Only an adult son.';
-      if (s.flags.ptahPriest) return 'Memphis already has a royal High Priest.';
+      if (!sn || !sn.alive || !isAdult(sn)) return 'Only an adult prince.';
+      if (s.flags.ptahPriest && son(s, s.flags.ptahPriest)?.alive) return 'Memphis already has a royal High Priest.';
       return true;
     },
     run(s, a, api) {
@@ -502,16 +523,18 @@ export const ACTIONS = {
     desk: 'family',
     cost: () => 1,
     label: (s, a) => `Spend the season with ${wife(s, a.wifeId)?.name}`,
-    available: (s, a) => wife(s, a.wifeId)?.status === 'court' || 'She is not at court.',
+    available: (s, a) => wife(s, a.wifeId)?.status === 'court' || 'Only the reigning Pharaoh’s own spouse.',
     run(s, a, api) {
       const w = wife(s, a.wifeId);
       const wives = {};
-      for (const x of courtWives(s)) wives[x.id] = x.id === w.id ? 12 : -3;
+      for (const x of kingWives(s)) wives[x.id] = x.id === w.id ? 12 : -3;
       api.fx({ wives });
-      api.log(`Pharaoh spends the season in ${w.name}’s apartments. The rest of the harem counts the nights.`);
-      if (!s.pregnancy && (w.age ?? 30) <= 40 && api.chance(0.35)) {
-        s.pregnancy = { wifeId: w.id, dueTurn: s.turn + 3 };
-        api.log(`Before the season ends, the physicians announce that ${w.name} is with child.`);
+      const femaleKing = s.pharaoh.sex === 'f';
+      api.log(femaleKing ? `Pharaoh spends the season with her consort ${w.name}.` : `Pharaoh spends the season in ${w.name}’s apartments. The rest of the harem counts the nights.`);
+      const motherAge = femaleKing ? s.pharaoh.age : w.age ?? 30;
+      if (!s.pregnancy && motherAge <= 40 && api.chance(0.35)) {
+        s.pregnancy = { wifeId: femaleKing ? 'pharaoh' : w.id, dueTurn: s.turn + 3 };
+        api.log(femaleKing ? 'Before the season ends, the physicians announce that Pharaoh herself is with child.' : `Before the season ends, the physicians announce that ${w.name} is with child.`);
       }
     },
   },
@@ -531,7 +554,12 @@ export const ACTIONS = {
     desk: 'family',
     cost: () => 2,
     label: (s, a) => `Make ${wife(s, a.wifeId)?.name} Great Royal Wife`,
-    available: (s, a) => (wife(s, a.wifeId)?.title.startsWith('Great') ? 'She already is.' : wife(s, a.wifeId)?.status === 'court' || 'She is not at court.'),
+    available(s, a) {
+      const w = wife(s, a.wifeId);
+      if (s.pharaoh.sex === 'f') return 'A female Pharaoh has a consort, not a Great Royal Wife.';
+      if (w?.title.startsWith('Great')) return 'She already is.';
+      return w?.status === 'court' || 'Only the reigning Pharaoh’s own wives.';
+    },
     run(s, a, api) {
       const nu = wife(s, a.wifeId);
       const old = s.wives.find((w) => w.status === 'court' && w.title.startsWith('Great'));
@@ -568,40 +596,46 @@ export const ACTIONS = {
   'family.take_wife': {
     desk: 'family',
     cost: () => 2,
-    label: () => 'Take a new wife',
+    label: (s) => (s.pharaoh.sex === 'f' ? 'Take a consort' : 'Take a new wife'),
     available(s, a) {
-      if (courtWives(s).length >= 7) return 'The harem is full (7 wives at court).';
+      if (s.pharaoh.age < 14) return 'The king is too young to marry.';
+      if (s.pharaoh.sex === 'f' && kingWives(s).length >= 1) return 'Pharaoh already has a consort.';
+      if (kingWives(s).length >= 7) return 'The harem is full (7 wives at court).';
       const [kind, ref] = a.source.split(':');
-      if (kind === 'foreign' && s.realms[ref].relation < 30) return `${s.realms[ref].name} will not send a bride (relation below 30).`;
+      if (kind === 'foreign' && s.realms[ref].relation < 30) return `${s.realms[ref].name} will not send a ${s.pharaoh.sex === 'f' ? 'prince' : 'bride'} (relation below 30).`;
       return true;
     },
     run(s, a, api) {
       const [kind, ref] = a.source.split(':');
+      const fk = s.pharaoh.sex === 'f';
       const others = {};
-      for (const w of courtWives(s)) others[w.id] = -5;
+      for (const w of kingWives(s)) others[w.id] = -5;
+      const spouseKind = (k) => (fk ? 'consort' : k);
+      const spouseTitle = (t) => (fk ? 'King’s Husband (consort)' : t);
+      const pickName = (key, female) => hashPick(female ? FEMALE_NAMES : MALE_NAMES, key);
       if (kind === 'nome') {
         const n = nome(s, ref);
         n.loyalty = clamp(n.loyalty + 15, 0, 100);
-        newWife(s, { name: hashPick(FEMALE_NAMES, n.id + s.turn), title: 'Secondary Wife', origin: `Daughter of ${n.nomarch}, Nomarch of ${n.name}`, tie: 'bureaucracy', kind: 'wife', influence: 30, ambition: 60, satisfaction: 65 });
+        newWife(s, { name: pickName(n.id + s.turn, !fk), title: spouseTitle('Secondary Wife'), origin: `${fk ? 'Son' : 'Daughter'} of ${n.nomarch}, Nomarch of ${n.name}`, tie: 'bureaucracy', kind: spouseKind('wife'), influence: 30, ambition: 60, satisfaction: 65 });
         api.fx({ wives: others, approval: { bureaucracy: 3 } });
-        api.log(`The daughter of ${n.nomarch} of ${n.name} enters the harem. Her father is suddenly very loyal.`);
+        api.log(`The ${fk ? 'son' : 'daughter'} of ${n.nomarch} of ${n.name} comes to court. Her father is suddenly very loyal.`.replace('Her father', fk ? 'His father' : 'Her father'));
       } else if (kind === 'foreign') {
         const r = s.realms[ref];
         r.relation = clamp(r.relation + 15, -100, 100);
-        const name = hashPick(FOREIGN_BRIDES[ref] || FEMALE_NAMES, ref + s.turn);
-        newWife(s, { name, title: `${r.name.split(' ')[0]} Royal Wife`, origin: `Daughter of ${r.ruler}`, tie: ref, kind: ref === 'hatti' ? 'wife-hatti' : ref === 'babylon' ? 'wife-babylon' : 'wife', influence: 35, ambition: 55, satisfaction: 70 });
+        const name = fk ? pickName(ref + s.turn, false) : hashPick(FOREIGN_BRIDES[ref] || FEMALE_NAMES, ref + s.turn);
+        newWife(s, { name, title: spouseTitle(`${r.name.split(' ')[0]} Royal Wife`), origin: `${fk ? 'Son' : 'Daughter'} of ${r.ruler}`, tie: ref, kind: spouseKind(ref === 'hatti' ? 'wife-hatti' : ref === 'babylon' ? 'wife-babylon' : 'wife'), influence: 35, ambition: 55, satisfaction: 70 });
         api.fx({ wives: others, gold: 500 });
         api.log(`${name} arrives from ${r.name} with a dowry of gold, horses and three hundred attendants.`);
       } else if (kind === 'general') {
         const g = s.army.generals.find((x) => x.id === ref);
         g.loyalty = clamp(g.loyalty + 15, 0, 100);
-        newWife(s, { name: hashPick(FEMALE_NAMES, g.id + s.turn), title: 'Secondary Wife', origin: `Daughter of General ${g.name}`, tie: 'military', kind: 'wife', influence: 25, ambition: 50, satisfaction: 65 });
+        newWife(s, { name: fk ? `General ${g.name}` : pickName(g.id + s.turn, true), title: spouseTitle('Secondary Wife'), origin: fk ? 'A general of the army' : `Daughter of General ${g.name}`, tie: 'military', kind: spouseKind('wife'), influence: 25, ambition: 50, satisfaction: 65 });
         api.fx({ wives: others, approval: { military: 4 } });
-        api.log(`General ${g.name}’s daughter enters the harem. The general’s loyalty is assured, for now.`);
+        api.log(fk ? `General ${g.name} becomes Pharaoh’s consort. The army is delighted.` : `General ${g.name}’s daughter enters the harem. The general’s loyalty is assured, for now.`);
       } else {
-        newWife(s, { name: hashPick(FEMALE_NAMES, 'harem' + s.turn), title: 'Lady of the Harem', origin: 'A beauty of the royal household', tie: 'none', kind: 'wife', influence: 10, ambition: 30, satisfaction: 80 });
+        newWife(s, { name: pickName('harem' + s.turn, !fk), title: spouseTitle('Lady of the Harem'), origin: fk ? 'A courtier of the palace' : 'A beauty of the royal household', tie: 'none', kind: spouseKind('wife'), influence: 10, ambition: 30, satisfaction: 80 });
         api.fx({ wives: others });
-        api.log('A new lady of the harem catches Pharaoh’s eye. She brings no allies, and no enemies yet.');
+        api.log(fk ? 'Pharaoh chooses a consort from among the courtiers. He brings no allies, and no enemies yet.' : 'A new lady of the harem catches Pharaoh’s eye. She brings no allies, and no enemies yet.');
       }
     },
   },
@@ -875,3 +909,5 @@ export const ACTIONS = {
   },
 };
 
+
+Object.assign(ACTIONS, MORE_ACTIONS);

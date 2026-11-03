@@ -12,7 +12,14 @@ Around it, **seven desks** let you rule directly: granaries and rations, seven a
 units and their commanders, every wife and child (schooling, marriages, the
 succession), the officials of the court, eight nomes, six foreign courts and your
 monuments, all limited by **Royal Attention**. Every character has a procedurally
-drawn portrait. When your reign ends, your heart is weighed against the feather of Ma'at.
+drawn portrait.
+
+When your reign ends, your heart is weighed against the feather of Ma'at, and you
+**play on as your heir**, son or daughter. If the heir is a child, you rule as the
+regent while the nobles circle. Conquer Canaan, Syria, Kush and Libya, keep your
+vassals from revolting, fill the treasury, plant spies in every household, and
+marry your children into Nomarch houses, foreign courts or each other, with all
+the consequences.
 
 ## Play
 
@@ -42,7 +49,10 @@ contract, plus a fuzz run that plays 300 random reigns to completion.
 | `src/engine/` | Pure simulation with no DOM: flood, economy, army, court, rotation, judgment |
 | `src/content/` | Crises, opportunities, omens, bloc demands and the desk command registry (`actions.js`) |
 | `src/ui/render.js` | HUD, dock and the Throne Room (the Strategic Briefing Dashboard) |
-| `src/ui/desks.js` | The seven royal desks |
+| `src/ui/desks.js` | The royal desks: treasury, army, world, family, court, nomes, spies, monuments, dynasty |
+| `src/engine/dynasty.js` | Succession, regency, grandchildren, divine blood |
+| `src/engine/world.js` | Provinces, wars, peace, buildings, expeditions, the power ranking |
+| `src/engine/spies.js` | The King's Eyes and Ears |
 | `src/ui/portraits.js` | Procedural Egyptian portraits |
 | `src/main.js` | Browser wiring and save/load |
 | `tests/` | `node:test` suite |

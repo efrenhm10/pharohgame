@@ -51,7 +51,7 @@ function setTab(t) {
 }
 
 function render({ scroll = false } = {}) {
-  if (state.phase === 'ended') tab = 'throne';
+  if (state.phase === 'ended' || (tab !== 'throne' && !DESK_RENDERERS[tab])) tab = 'throne';
   $hud.innerHTML = renderHud(state);
   $mbar.innerHTML = renderMobileBar(state);
   $dock.innerHTML = renderDock(state, tab);

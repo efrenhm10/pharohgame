@@ -478,3 +478,19 @@ body::before {
   .view { padding-bottom: 6rem; }
   .toasts { bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px)); }
 }
+
+/* ── v3: world, wars, spies, regency ─────────────────────────────────── */
+.badge--spy { background: #4b3a6b; }
+.intel { background: var(--panel-2); border-left: 3px solid #6b56a0; padding: 0.35rem 0.55rem; border-radius: 6px; }
+.cmds--inline { display: inline-flex; margin-left: 0.4rem; }
+.table-wrap { overflow-x: auto; }
+table.ledger, table.power { width: 100%; border-collapse: collapse; font-size: 0.88rem; font-variant-numeric: tabular-nums; }
+table.ledger td, table.power td { padding: 0.25rem 0.35rem; border-bottom: 1px solid var(--line); vertical-align: middle; }
+table.ledger td:last-child { text-align: right; white-space: nowrap; }
+table.power td:nth-child(3) { width: 30%; min-width: 90px; }
+table.power tr.me td { background: var(--panel-2); font-weight: 600; }
+.card.war { border-color: var(--bad); }
+.prov--vassal { border-left: 4px solid var(--lapis); }
+.prov--province { border-left: 4px solid var(--gold); }
+.regency { border: 2px solid var(--gold); }
+.regency h2 { margin-bottom: 0.4rem; }

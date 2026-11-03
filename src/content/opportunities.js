@@ -212,7 +212,7 @@ const sonBorn = {
   forcedOnly: true,
   brief: (s, ctx) => {
     const sn = son(s, ctx.sonId);
-    const m = wife(s, sn.motherId);
+    const m = wife(s, sn.motherId) || { name: s.pharaoh.name, title: 'Pharaoh herself', origin: 'Born of the living Horus' };
     return [
       `**${m.name}** (${m.title}) has given birth to a healthy son: **Prince ${sn.name}**. The midwives have recited the spells of Bes and Taweret over him, and the court has celebrated for three days.`,
       `${m.origin}. The baby’s claim depends on how you present him, and each of the other mothers is already counting what he costs her son.`,
@@ -567,4 +567,69 @@ const sedFestival = {
   ],
 };
 
-export const OPPORTUNITIES = [blessing, punt, babylonPrincess, sonBorn, victoryDividend, goldSeam, canaanTribute, quietSeason, sedFestival];
+// ─────────────────────────────────────────────────────────────────────────
+const accession = {
+  id: 'accession',
+  type: 'opportunity',
+  title: (s) => `Long Live ${s.pharaoh.name}`,
+  forcedOnly: true,
+  brief: (s) => {
+    const last = s.dynasty[s.dynasty.length - 1];
+    return [
+      `${last ? `${last.name} has been laid in the House of Eternity after ${last.years} years on the throne.` : 'The old king is dead.'} Seventy days of mourning are over. **${s.pharaoh.name}**, ${s.pharaoh.throneName}, steps onto the Horus throne at Memphis.`,
+      `Every faction is watching the new ${s.pharaoh.sex === 'f' ? 'king, a woman wearing the false beard,' : 'king'} to see what kind of ruler ${s.pharaoh.sex === 'f' ? 'she' : 'he'} will be.${s.regency ? ` Until Pharaoh comes of age, ${s.regency.regent} holds the regency.` : ''}`,
+    ];
+  },
+  options: [
+    {
+      id: 'coronation',
+      title: 'A Coronation of Unmatched Splendor',
+      cost: '100,000 khar and 300 deben of gold.',
+      fallout: 'Ma’at +8. Every power block +3%.',
+      risk: 'A full treasury is the strongest argument a new king has. This spends some of it.',
+      apply(s, api) {
+        api.fx({ grain: -Math.min(100000, s.grain.royal), gold: -Math.min(300, s.gold), maat: 8, approval: { priesthood: 3, bureaucracy: 3, military: 3, harem: 3 } });
+        api.log('The double crown is placed on Pharaoh’s head at Memphis before every god and every Nomarch of the Two Lands.');
+      },
+    },
+    {
+      id: 'amnesty',
+      title: 'Proclaim an Amnesty and a Tax Remission',
+      cost: 'This year’s taxes are cut by a third; prisoners are freed.',
+      fallout: 'Bureaucracy +8%, Ma’at +4.',
+      risk: 'The granaries will be thin after Shemu.',
+      apply(s, api) {
+        for (const n of s.nomes) n.loyalty = Math.min(100, n.loyalty + 6);
+        api.fx({ approval: { bureaucracy: 8 }, maat: 4, flags: { taxRemissionYear: s.year } });
+        api.log('Heralds proclaim Pharaoh’s mercy in every nome. The prisons of Tjaru are opened.');
+      },
+    },
+    {
+      id: 'confirm',
+      title: 'Confirm Every Official in Office',
+      cost: 'You keep your father’s men, and their habits.',
+      fallout: 'Every official’s loyalty +15. Bureaucracy +4%.',
+      risk: 'Continuity, including the corruption you inherited.',
+      apply(s, api) {
+        for (const k of ['vizier', 'vizierNorth', 'highPriest', 'overseer', 'viceroy']) if (s[k]) s[k].loyalty = Math.min(100, (s[k].loyalty ?? 50) + 15);
+        api.fx({ approval: { bureaucracy: 4 } });
+        api.log('The Viziers, the High Priest and the Viceroy kneel and receive their seals again from the new king’s hand.');
+      },
+    },
+    {
+      id: 'purge',
+      title: 'Purge the Old Court',
+      cost: 'Your siblings are sent to distant temples and estates; their friends lose their posts.',
+      fallout: 'Military +5%. Bureaucracy −8%. Ma’at −2.',
+      risk: 'Your brothers and sisters lose 20 Legitimacy and 20 Loyalty. They remember.',
+      apply(s, api) {
+        const fx = { approval: { military: 5, bureaucracy: -8 }, maat: -2, sons: {} };
+        for (const x of [...s.sons, ...(s.daughters || [])]) if (x.alive && x.rel === 'sibling' && x.legitimacy != null) fx.sons[x.id] = { legitimacy: -20, loyalty: -20 };
+        api.fx(fx);
+        api.log('One by one, Pharaoh’s brothers and sisters are given estates far from the capital, and guards to keep them there.');
+      },
+    },
+  ],
+};
+
+export const OPPORTUNITIES = [blessing, punt, babylonPrincess, sonBorn, victoryDividend, goldSeam, canaanTribute, quietSeason, sedFestival, accession];
