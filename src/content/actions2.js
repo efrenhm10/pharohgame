@@ -170,7 +170,8 @@ export const MORE_ACTIONS = {
       if (!place || !def) return 'Nothing to build.';
       if (a.kind === 'province' && place.owner !== 'egypt') return 'Not an Egyptian province.';
       if (a.kind === 'province' && place.occupiedBy) return 'The province is occupied by the enemy.';
-      if (building(place, a.type)) return 'Already built.';
+      const existing = building(place, a.type);
+      if (existing) return existing.readyTurn > s.turn ? `Under construction: ready in ${existing.readyTurn - s.turn} season${existing.readyTurn - s.turn === 1 ? '' : 's'}.` : 'Already built.';
       if (def.only && !def.only.includes(place.id)) return 'Only river ports can have a harbor.';
       if (def.needs && !def.needs.includes(place.resource)) return 'This province lacks the resource.';
       if (s.gold < def.gold) return `Needs ${def.gold} deben of gold.`;

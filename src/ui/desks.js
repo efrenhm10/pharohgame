@@ -291,6 +291,19 @@ function worldDesk(s) {
   <h3 class="section-title">Foreign courts</h3><div class="cards">${realms}</div>`;
 }
 
+/** Finished buildings with what they do; unfinished ones with the seasons left. */
+function buildingList(s, place, defs) {
+  const items = (place.buildings || []).map((b) => {
+    const d = defs[b.type];
+    if (!d) return '';
+    const left = b.readyTurn - s.turn;
+    return left > 0
+      ? `<li class="bld bld--building">🏗️ <strong>${esc(d.name)}</strong>: under construction, ready in ${left} season${left === 1 ? '' : 's'}</li>`
+      : `<li class="bld bld--done">✅ <strong>${esc(d.name)}</strong>: ${esc(d.note)}</li>`;
+  });
+  return items.length ? `<ul class="blds">${items.join('')}</ul>` : '';
+}
+
 /** Who is on a front, and buttons to send everyone else there. */
 function troopsPanel(s, front) {
   const here = units(s).filter((u) => u.station === front && u.kind !== 'police');
@@ -310,12 +323,14 @@ function provinceCard(s, p) {
   const reach = reachable(s, p);
   const cb = !mine ? casusBelli(s, p.owner, p) : null;
   const buildable = Object.entries(PROVINCE_BUILDINGS).filter(([, d]) => !d.needs || d.needs.includes(p.resource));
-  const blds = (p.buildings || []).map((b) => `${PROVINCE_BUILDINGS[b.type].name}${b.readyTurn > s.turn ? ` (${b.readyTurn - s.turn} seasons)` : ''}`).join(', ');
+  const blds = buildingList(s, p, PROVINCE_BUILDINGS);
+  const yearly = goldLedger(s).lines.filter((l) => l.label.endsWith(p.name)).reduce((t, l) => t + l.amount, 0);
   const gov = p.governorId ? [...livingSons(s), ...livingDaughters(s)].find((x) => x.id === p.governorId) : null;
   return `<article class="card prov prov--${mine ? p.status : 'foreign'}">
     <div class="card__head"><span class="realm-glyph" aria-hidden="true">${OWNER_GLYPH[p.owner] || '🏳️'}</span><div><h4>${esc(p.name)}${p.capital ? ' ★' : ''}</h4><span class="small">${status}${occ}${p.claim && !mine ? ' · <strong>Egyptian claim</strong>' : ''}</span><br><span class="small muted">${p.resource ? RESOURCES[p.resource] + ' · ' : ''}${p.gold} gold · ${fmt(p.grain)} grain a year · defense ${defenseOf(s, p)}${gov ? ` · governed by ${gov.sex === 'f' ? 'Princess' : 'Prince'} ${esc(gov.name)}` : ''}</span></div></div>
     ${mine ? `<div class="bars"><span>Unrest</span>${meter(100 - p.unrest, { label: 'calm' })}<b>${p.unrest}</b></div>` : ''}
-    ${blds ? `<p class="small">🏗️ ${esc(blds)}</p>` : ''}
+    ${mine ? `<p class="small">Sends Egypt <strong>${fmt(yearly)} deben</strong> a year${p.status === 'province' ? ` and about ${k(Math.round((p.grain / 3) * (1 - p.unrest / 200)))} khar of grain a season` : ''}.</p>` : ''}
+    ${blds}
     <div class="cmds">
       ${mine && !p.occupiedBy ? pickCmd(s, 'build', { kind: 'province', id: p.id }, 'type', buildable.map(([id, d]) => [id, `${d.name}: ${d.gold} dbn + ${k(d.grain)} khar. ${d.note}`]), 'Build…') : ''}
       ${mine ? cmd(s, 'province.garrison_pay', { id: p.id }, 'Calm with gifts') : ''}
@@ -469,13 +484,13 @@ function nomesDesk(s) {
         if (c) kin.push(`his house married ${c.sex === 'm' ? 'Prince' : 'Princess'} ${c.name}`);
       }
       if (n.governorId) kin.push(`a royal ${n.governorSex === 'f' ? 'princess' : 'prince'} governs here`);
-      const blds = (n.buildings || []).map((b) => `${NOME_BUILDINGS[b.type].name}${b.readyTurn > s.turn ? ` (${b.readyTurn - s.turn} seasons)` : ''}`).join(', ');
+      const blds = buildingList(s, n, NOME_BUILDINGS);
       const buildable = Object.entries(NOME_BUILDINGS).filter(([, d]) => !d.only || d.only.includes(n.id));
       return `<article class="card">
         <div class="card__head">${person({ kind: n.governorId ? (n.governorSex === 'f' ? 'princess' : 'prince') : 'nomarch', seed: n.seed, age: n.governorId ? 25 : n.nomarchAge ?? 50 }, 60)}<div><h4>${esc(n.name)}</h4><span class="small">${n.governorId ? '' : 'Nomarch '}${esc(n.nomarch)}${n.nomarchAge ? `, ${n.nomarchAge}` : ''}${n.hereditary ? ' · <span class="badge">hereditary</span>' : ''}</span>${kin.length ? `<br><span class="small muted">${esc(kin.join(' · '))}</span>` : ''}</div></div>
         <div class="bars"><span>Loyalty</span>${meter(n.loyalty, { label: 'loyalty' })}<b>${n.loyalty}</b><span>Ambition</span>${meter(n.ambition ?? 50, { tone: 'lapis', label: 'ambition' })}<b>${n.ambition ?? 50}</b></div>
         <p class="small">${Math.round(n.share * 100)}% of the realm’s harvest · yield ×${n.yield.toFixed(2)} · <span class="${n.loyalty < 45 ? 'warn' : 'good'}">${honesty}</span>${n.canalUntil ? ' · canals being dug' : ''}</p>
-        ${blds ? `<p class="small">🏗️ ${esc(blds)}</p>` : ''}
+        ${blds}
         <div class="cmds">
           ${cmd(s, 'nome.audit', { nomeId: n.id }, 'Audit')}
           ${cmd(s, 'nome.requisition', { nomeId: n.id }, 'Requisition grain')}
