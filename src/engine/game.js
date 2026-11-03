@@ -19,6 +19,13 @@ import { strengthBonus } from './army.js';
 import { EVENTS } from '../content/index.js';
 import { ACTIONS } from '../content/actions.js';
 import { syncArmyBurn } from './army.js';
+import { renamePlaceholders } from '../content/names.js';
+
+/** Bring an older save up to date without losing the reign. */
+export function migrateSave(s) {
+  renamePlaceholders(s);
+  return s;
+}
 
 export function newGame(seed = Date.now()) {
   const s = createInitialState(seed);

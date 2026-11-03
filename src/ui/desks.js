@@ -20,7 +20,9 @@ function cmd(s, id, args, label, { cls = '', hint = '' } = {}) {
   const ok = canPerform(s, id, args);
   const cost = ACTIONS[id].cost(s, args);
   const reason = ok === true ? hint : ok;
-  return `<button class="cmd ${cls}" data-cmd="${id}" data-args="${esc(JSON.stringify(args))}" ${ok === true ? '' : 'disabled'} ${reason ? `title="${esc(reason)}"` : ''}>${label}${cost ? ` <span class="cost">⚡${cost}</span>` : ''}</button>`;
+  // Unavailable commands stay tappable so they can explain why (tooltips do not work on phones).
+  const off = ok === true ? '' : ` aria-disabled="true" data-reason="${esc(ok)}"`;
+  return `<button class="cmd ${cls}${ok === true ? '' : ' is-off'}" data-cmd="${id}" data-args="${esc(JSON.stringify(args))}"${off} ${reason ? `title="${esc(reason)}"` : ''}>${label}${cost ? ` <span class="cost">⚡${cost}</span>` : ''}</button>`;
 }
 
 /** A segmented control for a standing policy. */
@@ -39,7 +41,7 @@ function pickCmd(s, id, args, argName, choices, placeholder) {
   const opts = choices
     .map(([v, label]) => {
       const ok = canPerform(s, id, { ...args, [argName]: v });
-      return `<option value="${esc(v)}" ${ok === true ? '' : 'disabled'}>${esc(label)}${ok === true ? '' : ' (unavailable)'}</option>`;
+      return `<option value="${esc(v)}" ${ok === true ? '' : 'disabled'}>${ok === true ? '' : '✗ '}${esc(label)}${ok === true ? '' : ` — ${esc(ok)}`}</option>`;
     })
     .join('');
   return `<select class="pick" data-cmd="${id}" data-args="${esc(JSON.stringify(args))}" data-arg="${argName}" aria-label="${esc(placeholder)}"><option value="">${esc(placeholder)}${cost ? ` (⚡${cost})` : ''}</option>${opts}</select>`;
@@ -283,9 +285,9 @@ function provinceCard(s, p) {
   const cb = !mine ? casusBelli(s, p.owner, p) : null;
   const buildable = Object.entries(PROVINCE_BUILDINGS).filter(([, d]) => !d.needs || d.needs.includes(p.resource));
   const blds = (p.buildings || []).map((b) => `${PROVINCE_BUILDINGS[b.type].name}${b.readyTurn > s.turn ? ` (${b.readyTurn - s.turn} seasons)` : ''}`).join(', ');
-  const gov = p.governorId ? livingSons(s).find((x) => x.id === p.governorId) : null;
+  const gov = p.governorId ? [...livingSons(s), ...livingDaughters(s)].find((x) => x.id === p.governorId) : null;
   return `<article class="card prov prov--${mine ? p.status : 'foreign'}">
-    <div class="card__head"><span class="realm-glyph" aria-hidden="true">${OWNER_GLYPH[p.owner] || '🏳️'}</span><div><h4>${esc(p.name)}${p.capital ? ' ★' : ''}</h4><span class="small">${status}${occ}${p.claim && !mine ? ' · <strong>Egyptian claim</strong>' : ''}</span><br><span class="small muted">${p.resource ? RESOURCES[p.resource] + ' · ' : ''}${p.gold} gold · ${fmt(p.grain)} grain a year · defense ${defenseOf(s, p)}${gov ? ` · governed by Prince ${esc(gov.name)}` : ''}</span></div></div>
+    <div class="card__head"><span class="realm-glyph" aria-hidden="true">${OWNER_GLYPH[p.owner] || '🏳️'}</span><div><h4>${esc(p.name)}${p.capital ? ' ★' : ''}</h4><span class="small">${status}${occ}${p.claim && !mine ? ' · <strong>Egyptian claim</strong>' : ''}</span><br><span class="small muted">${p.resource ? RESOURCES[p.resource] + ' · ' : ''}${p.gold} gold · ${fmt(p.grain)} grain a year · defense ${defenseOf(s, p)}${gov ? ` · governed by ${gov.sex === 'f' ? 'Princess' : 'Prince'} ${esc(gov.name)}` : ''}</span></div></div>
     ${mine ? `<div class="bars"><span>Unrest</span>${meter(100 - p.unrest, { label: 'calm' })}<b>${p.unrest}</b></div>` : ''}
     ${blds ? `<p class="small">🏗️ ${esc(blds)}</p>` : ''}
     <div class="cmds">
@@ -301,14 +303,17 @@ function provinceCard(s, p) {
 // ── 🪷 ROYAL FAMILY ──────────────────────────────────────────────────────
 
 const POSTS = (s, c) => {
-  if (c.sex === 'f') return [['chantress', 'Chantress of Amun (Priesthood +4%)'], ['estates', 'Overseer of the royal estates at Mi-wer (+150 deben a year)']];
+  const governorships = [
+    ...s.nomes.map((n) => [`nome:${n.id}`, `Governor of ${n.name} (replaces ${n.nomarch})`]),
+    ...s.provinces.filter((p) => p.owner === 'egypt').map((p) => [`province:${p.id}`, `Governor of ${p.name}`]),
+  ];
+  if (c.sex === 'f') return [['chantress', 'Chantress of Amun (Priesthood +4%)'], ['estates', 'Overseer of the royal estates at Mi-wer (+150 deben a year)'], ...governorships];
   return [
     ['vizier', 'Vizier of the South'],
     ['vizierNorth', 'Vizier of the North'],
     ['overseer', 'Overseer of the Granaries'],
     ['viceroy', 'Viceroy of Kush'],
-    ...s.nomes.map((n) => [`nome:${n.id}`, `Governor of ${n.name} (replaces Nomarch ${n.nomarch})`]),
-    ...s.provinces.filter((p) => p.owner === 'egypt').map((p) => [`province:${p.id}`, `Governor of ${p.name}`]),
+    ...governorships,
   ];
 };
 
@@ -426,7 +431,7 @@ function courtDesk(s) {
 
 function nomesDesk(s) {
   const unmarried = [...livingSons(s), ...livingDaughters(s)].filter((c) => isAdult(c) && !c.spouse && c.office !== 'gods_wife');
-  const princes = livingSons(s).filter(isAdult);
+  const princes = [...livingSons(s), ...livingDaughters(s)].filter(isAdult).filter((c) => c.office !== 'gods_wife');
   const rows = s.nomes
     .map((n) => {
       const honesty = n.loyalty < 30 ? 'hides a quarter of its harvest' : n.loyalty < 45 ? 'under-reports its harvest' : 'reports honestly';
@@ -437,11 +442,11 @@ function nomesDesk(s) {
         const c = [...s.sons, ...(s.daughters || [])].find((x) => x.id === n.royalKin);
         if (c) kin.push(`his house married ${c.sex === 'm' ? 'Prince' : 'Princess'} ${c.name}`);
       }
-      if (n.governorId) kin.push('a royal prince governs here');
+      if (n.governorId) kin.push(`a royal ${n.governorSex === 'f' ? 'princess' : 'prince'} governs here`);
       const blds = (n.buildings || []).map((b) => `${NOME_BUILDINGS[b.type].name}${b.readyTurn > s.turn ? ` (${b.readyTurn - s.turn} seasons)` : ''}`).join(', ');
       const buildable = Object.entries(NOME_BUILDINGS).filter(([, d]) => !d.only || d.only.includes(n.id));
       return `<article class="card">
-        <div class="card__head">${person({ kind: n.governorId ? 'prince' : 'nomarch', seed: n.seed, age: n.nomarchAge ?? 50 }, 60)}<div><h4>${esc(n.name)}</h4><span class="small">${n.governorId ? '' : 'Nomarch '}${esc(n.nomarch)}${n.nomarchAge ? `, ${n.nomarchAge}` : ''}${n.hereditary ? ' · <span class="badge">hereditary</span>' : ''}</span>${kin.length ? `<br><span class="small muted">${esc(kin.join(' · '))}</span>` : ''}</div></div>
+        <div class="card__head">${person({ kind: n.governorId ? (n.governorSex === 'f' ? 'princess' : 'prince') : 'nomarch', seed: n.seed, age: n.governorId ? 25 : n.nomarchAge ?? 50 }, 60)}<div><h4>${esc(n.name)}</h4><span class="small">${n.governorId ? '' : 'Nomarch '}${esc(n.nomarch)}${n.nomarchAge ? `, ${n.nomarchAge}` : ''}${n.hereditary ? ' · <span class="badge">hereditary</span>' : ''}</span>${kin.length ? `<br><span class="small muted">${esc(kin.join(' · '))}</span>` : ''}</div></div>
         <div class="bars"><span>Loyalty</span>${meter(n.loyalty, { label: 'loyalty' })}<b>${n.loyalty}</b><span>Ambition</span>${meter(n.ambition ?? 50, { tone: 'lapis', label: 'ambition' })}<b>${n.ambition ?? 50}</b></div>
         <p class="small">${Math.round(n.share * 100)}% of the realm’s harvest · yield ×${n.yield.toFixed(2)} · <span class="${n.loyalty < 45 ? 'warn' : 'good'}">${honesty}</span>${n.canalUntil ? ' · canals being dug' : ''}</p>
         ${blds ? `<p class="small">🏗️ ${esc(blds)}</p>` : ''}
@@ -458,7 +463,7 @@ function nomesDesk(s) {
           ${pickCmd(s, 'build', { kind: 'nome', id: n.id }, 'type', buildable.map(([id, d]) => [id, `${d.name}: ${d.gold} dbn + ${k(d.grain)} khar. ${d.note}`]), 'Build…')}
           ${n.governorId ? '' : pickCmd(s, 'family.marry', { matchId: `nome:${n.id}` }, 'childId', unmarried.map((c) => [c.id, `${c.sex === 'm' ? 'Prince' : 'Princess'} ${c.name} marries into his house`]), 'Marry a royal child into his house…')}
           ${n.governorId ? '' : cmd(s, 'family.take_wife', { source: `nome:${n.id}` }, s.pharaoh.sex === 'f' ? 'Take his son as consort' : 'Take his daughter as wife')}
-          ${pickCmd(s, 'family.appoint', { post: `nome:${n.id}` }, 'childId', princes.filter((c) => c.id !== n.governorId).map((c) => [c.id, `Prince ${c.name} governs ${n.name}`]), 'Make a prince governor…')}
+          ${pickCmd(s, 'family.appoint', { post: `nome:${n.id}` }, 'childId', princes.filter((c) => c.id !== n.governorId).map((c) => [c.id, `${c.sex === 'f' ? 'Princess' : 'Prince'} ${c.name} governs ${n.name}`]), 'Make a royal child governor…')}
         </div>
         ${spy ? `<p class="small intel">👁️ ${md(intel(s, spy))}</p>` : ''}
       </article>`;

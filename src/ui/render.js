@@ -53,7 +53,7 @@ export const DESKS = [
 /** Quick command button usable anywhere (the desks module has richer controls). */
 export function quickCmd(canPerform, s, id, args, label) {
   const ok = canPerform(s, id, args);
-  return `<button class="cmd" data-cmd="${id}" data-args="${esc(JSON.stringify(args))}" ${ok === true ? '' : 'disabled'} ${ok === true ? '' : `title="${esc(ok)}"`}>${label}</button>`;
+  return `<button class="cmd${ok === true ? '' : ' is-off'}" data-cmd="${id}" data-args="${esc(JSON.stringify(args))}" ${ok === true ? '' : `aria-disabled="true" data-reason="${esc(ok)}" title="${esc(ok)}"`}>${label}</button>`;
 }
 
 export function renderHud(state) {

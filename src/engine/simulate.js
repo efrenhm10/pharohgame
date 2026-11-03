@@ -16,7 +16,7 @@ import {
 } from './realm.js';
 import { chooseBriefing } from './rotation.js';
 import { endReign } from './ending.js';
-import { SON_NAMES, DAUGHTER_NAMES } from '../content/names.js';
+import { SON_NAMES, DAUGHTER_NAMES, freshName } from '../content/names.js';
 import { armySeason, syncArmyBurn, coupThreat } from './army.js';
 import { succeed, grandchildrenSeason, ageGrandchildren, regencySeason, childMortality } from './dynasty.js';
 import { worldSeason, aiWars, provinceGrain, goldLedger } from './world.js';
@@ -321,8 +321,8 @@ function birth(state, wifeId, report) {
     report.push('The birth is hard. Pharaoh’s health −8.');
   }
   if (chance(state, 0.5)) {
-    const used = new Set(state.sons.map((s) => s.name));
-    const name = SON_NAMES.find((n) => !used.has(n)) || `Son of Year ${state.year}`;
+    const used = new Set([...state.sons.map((s) => s.name), ...(state.dynasty || []).map((r) => r.personal), state.pharaoh.personal]);
+    const name = freshName(SON_NAMES, used);
     const id = `son-${state.turn}`;
     const divine = Boolean(w.royalBlood);
     const legitimacy = (w.title.startsWith('Great') ? 55 : w.tie === 'hatti' || w.tie === 'babylon' ? 40 : 30) + (divine ? 15 : 0);
@@ -334,8 +334,8 @@ function birth(state, wifeId, report) {
     report.push(`**${w.name} has borne Pharaoh a son: Prince ${name}.** A new piece enters the game of succession.`);
   } else {
     state.daughters = state.daughters || [];
-    const usedD = new Set(state.daughters.map((d) => d.name));
-    const name = DAUGHTER_NAMES.find((n) => !usedD.has(n)) || `Daughter of Year ${state.year}`;
+    const usedD = new Set([...state.daughters.map((d) => d.name), ...state.wives.map((w) => w.name)]);
+    const name = freshName(DAUGHTER_NAMES, usedD);
     state.daughters.push({ id: `dau-${state.turn}`, kind: 'princess', sex: 'f', seed: seedNum(state), name, age: 0, motherId: w.id, role: 'King’s Daughter', rel: 'child', legitimacy: w.title.startsWith('Great') ? 40 : 25, loyalty: 85, trait: randTrait(state), edu: null, skill: null, spouse: null, alive: true });
     w.satisfaction = clamp(w.satisfaction + 5, 0, 100);
     report.push(`${w.name} has borne Pharaoh a daughter, Princess ${name}.`);

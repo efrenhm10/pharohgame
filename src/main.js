@@ -1,5 +1,5 @@
 // Browser entry point: wires the engine to the DOM and persists the reign.
-import { newGame, decree, advance, perform } from './engine/game.js';
+import { newGame, decree, advance, perform, migrateSave } from './engine/game.js';
 import { SAVE_VERSION } from './engine/state.js';
 import { renderHud, renderDock, renderThrone, renderMobileBar, chipHtml, md } from './ui/render.js';
 import { DESK_RENDERERS } from './ui/desks.js';
@@ -22,7 +22,7 @@ function load() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const s = JSON.parse(raw);
-    return s && s.version === SAVE_VERSION ? s : null;
+    return s && s.version === SAVE_VERSION ? migrateSave(s) : null;
   } catch {
     return null;
   }
@@ -77,7 +77,7 @@ function act(fn, opts) {
 
 function toast(result) {
   const el = document.createElement('div');
-  el.className = 'toast';
+  el.className = `toast${result.muted ? ' toast--muted' : ''}`;
   el.innerHTML = `<strong>${md(result.title)}</strong>${result.lines.map((l) => `<p>${md(l)}</p>`).join('')}<div class="chips">${result.chips.map(chipHtml).join('')}</div>`;
   $toasts.prepend(el);
   setTimeout(() => el.classList.add('out'), 6500);
@@ -98,6 +98,7 @@ document.addEventListener('click', (e) => {
   const d = e.target.closest('[data-decree]');
   if (d && state.phase === 'briefing') return act(() => decree(state, d.dataset.decree), { scroll: true });
   const c = e.target.closest('button[data-cmd]');
+  if (c && c.getAttribute('aria-disabled') === 'true') return toast({ title: 'Not possible right now', lines: [c.dataset.reason || 'This order cannot be given.'], chips: [], muted: true });
   if (c && !c.disabled) return runCommand(c.dataset.cmd, JSON.parse(c.dataset.args || '{}'));
   const a = e.target.closest('[data-action]');
   if (!a || a.disabled) return;

@@ -427,9 +427,9 @@ export const MORE_ACTIONS = {
       if (!a.post) return 'Choose a post.';
       const [kind, ref] = a.post.split(':');
       if (kind === 'chantress' || kind === 'estates') return c.sex === 'f' || 'Only a princess.';
-      if (c.sex !== 'm') return 'That office goes to a prince.';
-      if (kind === 'nome') return nome(s, ref) ? true : 'No such nome.';
+      if (kind === 'nome') return !nome(s, ref) ? 'No such nome.' : nome(s, ref).governorId === c.id ? 'Already governs there.' : true;
       if (kind === 'province') return province(s, ref)?.owner === 'egypt' || 'Not an Egyptian province.';
+      if (c.sex !== 'm') return 'That office goes to a prince.';
       if (['vizier', 'vizierNorth', 'overseer', 'viceroy'].includes(kind)) return s[kind]?.sonId !== c.id || 'He already holds it.';
       return 'Unknown post.';
     },
@@ -449,8 +449,9 @@ export const MORE_ACTIONS = {
       } else if (kind === 'nome') {
         const n = nome(s, ref);
         const old = n.nomarch;
-        fx.approval.bureaucracy = n.hereditary ? -8 : -4;
-        n.nomarch = `Prince ${c.name}`;
+        const title = c.sex === 'f' ? 'Princess' : 'Prince';
+        fx.approval.bureaucracy = (n.hereditary ? -8 : -4) - (c.sex === 'f' ? 2 : 0);
+        n.nomarch = `${title} ${c.name}`;
         n.seed = c.seed;
         n.loyalty = 70;
         n.hereditary = false;
@@ -458,14 +459,15 @@ export const MORE_ACTIONS = {
         n.governorId = c.id;
         if (n.kinOf && wife(s, n.kinOf)) fx.wives = { [n.kinOf]: -15 };
         n.kinOf = null;
+        n.governorSex = c.sex;
         c.role = `Governor of ${n.name}`;
-        api.log(`${old} is retired. Prince ${c.name} governs ${n.name} now, and its grain answers to the royal house. The other Nomarchs wonder whose nome is next.`);
+        api.log(`${old} is retired. ${title} ${c.name} governs ${n.name} now, and its grain answers to the royal house. The other Nomarchs wonder whose nome is next${c.sex === 'f' ? ', and grumble at taking orders from a king’s daughter' : ''}.`);
       } else if (kind === 'province') {
         const p = province(s, ref);
         p.unrest = clamp(p.unrest - 15, 0, 100);
         p.governorId = c.id;
         c.role = `Governor of ${p.name}`;
-        api.log(`Prince ${c.name} sails to govern ${p.name}. A king’s son in residence calms the province.`);
+        api.log(`${c.sex === 'f' ? 'Princess' : 'Prince'} ${c.name} sails to govern ${p.name}. A child of Pharaoh in residence calms the province.`);
       } else {
         const comp = c.skill === 'administration' ? 72 : c.skill === 'statecraft' ? 66 : c.skill === 'martial' && kind === 'viceroy' ? 70 : 50;
         const titles = { vizier: 'Vizier of the South', vizierNorth: 'Vizier of the North', overseer: 'Overseer of the Granaries', viceroy: 'King’s Son of Kush (Viceroy)' };

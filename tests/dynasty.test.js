@@ -101,3 +101,15 @@ test('a reigning Pharaoh can marry his sister; their children carry the divine b
   assert.match(q.title, /Great Royal Wife/);
   assert.ok(!s.daughters.some((d) => d.id === 'meritamun' && d.alive));
 });
+
+import { renamePlaceholders, freshName, DAUGHTER_NAMES } from '../src/content/names.js';
+test('children get real names, and old placeholder names are repaired', () => {
+  const used = new Set(DAUGHTER_NAMES);
+  assert.match(freshName(DAUGHTER_NAMES, used), / the Younger$/);
+  const s = newGame('names');
+  s.daughters.push({ id: 'x', sex: 'f', name: 'Daughter of Year 4', age: 3, alive: true });
+  s.sons.push({ id: 'y', sex: 'm', name: 'Son of Year 7', age: 1, alive: true });
+  renamePlaceholders(s);
+  assert.ok(!s.daughters.some((d) => /of Year/.test(d.name)));
+  assert.ok(!s.sons.some((x) => /of Year/.test(x.name)));
+});

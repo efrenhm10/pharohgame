@@ -103,3 +103,15 @@ test('royal children can be appointed to offices and nomes', () => {
   perform(s, 'family.marry', { childId: 'meritamun', matchId: 'nome:memphis' });
   assert.equal(s.nomes.find((n) => n.id === 'memphis').royalKin, 'meritamun');
 });
+
+test('daughters can govern nomes and provinces', () => {
+  const s = newGame('governess');
+  s.attention.left = 9;
+  perform(s, 'family.appoint', { childId: 'meritamun', post: 'nome:delta' });
+  const d = s.nomes.find((n) => n.id === 'delta');
+  assert.equal(d.governorId, 'meritamun');
+  assert.equal(d.nomarch, 'Princess Meritamun');
+  perform(s, 'family.appoint', { childId: 'meritamun', post: 'province:gaza' });
+  assert.equal(province(s, 'gaza').governorId, 'meritamun');
+  assert.notEqual(canPerform(s, 'family.appoint', { childId: 'meritamun', post: 'vizier' }), true);
+});

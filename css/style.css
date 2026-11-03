@@ -494,3 +494,11 @@ table.power tr.me td { background: var(--panel-2); font-weight: 600; }
 .prov--province { border-left: 4px solid var(--gold); }
 .regency { border: 2px solid var(--gold); }
 .regency h2 { margin-bottom: 0.4rem; }
+
+/* Unavailable orders stay tappable to explain themselves. */
+.cmd.is-off { opacity: 0.5; cursor: help; }
+.cmd.is-off:hover { border-color: var(--line); }
+.toast--muted { border-color: var(--muted); }
+
+/* Toasts never block the buttons underneath them. */
+.toasts { pointer-events: none; }
