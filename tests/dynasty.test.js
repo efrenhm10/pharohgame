@@ -73,3 +73,17 @@ test('with nobody of the blood left, the dynasty ends', () => {
   s.heirId = null;
   assert.equal(succeed(s, []), false);
 });
+
+test('the new king can marry a dowager queen, but never his own mother', () => {
+  const s = newGame('dowager');
+  perform(s, 'family.designate', { sonId: 'khaemopet' });
+  assert.equal(succeed(s, []), true);
+  s.attention.left = 9;
+  assert.notEqual(canPerform(s, 'family.wed_dowager', { wifeId: 'henuttawy' }), true, 'Henuttawy is his mother');
+  const kh = s.sons.find((x) => x.id === 'amenmose');
+  perform(s, 'family.wed_dowager', { wifeId: 'asmunikal' });
+  const a = s.wives.find((w) => w.id === 'asmunikal');
+  assert.equal(a.status, 'court');
+  assert.match(a.title, /widow of Djehutymes V/);
+  assert.ok(kh);
+});

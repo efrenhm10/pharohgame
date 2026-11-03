@@ -582,6 +582,36 @@ export const ACTIONS = {
       api.log(`${nu.name} is crowned Great Royal Wife.${old ? ` ${old.name} is moved to lesser apartments.` : ''}`);
     },
   },
+  'family.wed_dowager': {
+    desk: 'family',
+    cost: () => 2,
+    label: (s, a) => `Marry the dowager queen ${wife(s, a.wifeId)?.name}`,
+    available(s, a) {
+      const w = wife(s, a.wifeId);
+      if (!w || w.status !== 'dowager') return 'Only a dowager queen.';
+      if (s.pharaoh.sex === 'f') return 'A female Pharaoh takes a consort, not a queen.';
+      if (w.id === s.pharaoh.motherId || w.title.startsWith('King’s Mother')) return 'She is Pharaoh’s own mother.';
+      if (s.pharaoh.age < 14) return 'The king is too young to marry.';
+      if (kingWives(s).length >= 7) return 'The harem is full (7 wives at court).';
+      return true;
+    },
+    run(s, a, api) {
+      const w = wife(s, a.wifeId);
+      const late = s.dynasty?.[s.dynasty.length - 1]?.name ?? 'the late king';
+      const fx = { wives: {}, sons: {}, approval: { priesthood: -3 }, maat: 2 };
+      for (const x of kingWives(s)) fx.wives[x.id] = -5;
+      w.status = 'court';
+      w.title = `Secondary Wife (widow of ${late})`;
+      w.influence = clamp(w.influence + 10, 0, 100);
+      w.plot = 0;
+      w.rumored = false;
+      fx.wives[w.id] = 30;
+      for (const x of sonsOf(s, w.id)) fx.sons[x.id] = { loyalty: 15 };
+      if (s.realms[w.tie]) s.realms[w.tie].relation = clamp(s.realms[w.tie].relation + 15, -100, 100);
+      api.fx(fx);
+      api.log(`${s.pharaoh.name} takes ${late}’s widow ${w.name} as his own wife, as Ay once married Ankhesenamun to bind himself to the old king’s house.${sonsOf(s, w.id).length ? ` Her sons, your half-brothers, are now the sons of your queen, and their ambitions cool.` : ''}${s.realms[w.tie] ? ` ${s.realms[w.tie].name} welcomes the renewed marriage alliance.` : ''} The priests mutter about propriety.`);
+    },
+  },
   'family.sideline': {
     desk: 'family',
     cost: () => 1,

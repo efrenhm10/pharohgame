@@ -337,6 +337,7 @@ function wifeCard(s, w, dowager) {
       ${dowager ? '' : cmd(s, 'family.favor', { wifeId: w.id }, s.pharaoh.sex === 'f' ? 'Spend the season with him' : 'Spend the season with her', { hint: 'Satisfaction +12, the others −3. A child may follow.' })}
       ${cmd(s, 'family.gift', { wifeId: w.id }, 'Grant estates (250 dbn)')}
       ${dowager || s.pharaoh.sex === 'f' || w.title.startsWith('Great') ? '' : cmd(s, 'family.elevate', { wifeId: w.id }, 'Make Great Royal Wife')}
+      ${dowager && s.pharaoh.sex !== 'f' && w.id !== s.pharaoh.motherId && !w.title.startsWith('King’s Mother') ? cmd(s, 'family.wed_dowager', { wifeId: w.id }, '💍 Marry her', { hint: 'She becomes your wife; her sons grow loyal; a foreign dowager renews her kingdom’s alliance. The priests disapprove a little.' }) : ''}
       ${cmd(s, 'family.sideline', { wifeId: w.id }, 'Banish from court')}
       ${spyBtn(s, 'wife', w.id)}${spy ? cmd(s, 'spy.arrest', { type: 'wife', target: w.id }, 'Arrest her plotters') : ''}
     </div>
@@ -373,7 +374,7 @@ function familyDesk(s) {
   <h3 class="section-title">Children</h3>
   <div class="cards">${children || '<p class="muted">No living children.</p>'}</div>
   ${siblings ? `<h3 class="section-title">Brothers and sisters</h3><p class="hint">Your siblings are princes and princesses of the blood. Brothers are your most dangerous rivals for the crown.</p><div class="cards">${siblings}</div>` : ''}
-  ${dowagers ? `<h3 class="section-title">Dowager queens</h3><p class="hint">Your father’s wives. They still scheme for their own sons.</p><div class="cards">${dowagers}</div>` : ''}`;
+  ${dowagers ? `<h3 class="section-title">Dowager queens</h3><p class="hint">Your father’s wives. They still scheme for their own sons. A king may marry a dowager who is not his own mother, binding her and her sons to his house.</p><div class="cards">${dowagers}</div>` : ''}`;
 }
 
 // ── 🏛️ COURT ─────────────────────────────────────────────────────────────

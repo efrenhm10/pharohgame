@@ -66,6 +66,7 @@ export function succeed(state, report) {
     sex: female ? 'f' : 'm',
     seed: h.seed,
     personal,
+    motherId: h.motherId,
     ordinal,
     name: `${personal}${ROMAN[ordinal] || ` ${ordinal}`}`,
     throneName: throneName(state, female),
