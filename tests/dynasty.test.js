@@ -87,3 +87,17 @@ test('the new king can marry a dowager queen, but never his own mother', () => {
   assert.match(a.title, /widow of Djehutymes V/);
   assert.ok(kh);
 });
+
+test('a reigning Pharaoh can marry his sister; their children carry the divine blood', () => {
+  const s = newGame('sister');
+  perform(s, 'family.designate', { sonId: 'khaemopet' });
+  assert.equal(succeed(s, []), true);
+  s.attention.left = 9;
+  assert.notEqual(canPerform(s, 'family.wed_sibling', { childId: 'amenmose' }), true, 'not a brother');
+  perform(s, 'family.wed_sibling', { childId: 'meritamun' });
+  const q = s.wives.find((w) => w.id === 'sib-meritamun');
+  assert.equal(q.status, 'court');
+  assert.equal(q.royalBlood, 'half');
+  assert.match(q.title, /Great Royal Wife/);
+  assert.ok(!s.daughters.some((d) => d.id === 'meritamun' && d.alive));
+});

@@ -326,7 +326,7 @@ function birth(state, wifeId, report) {
     const id = `son-${state.turn}`;
     const divine = Boolean(w.royalBlood);
     const legitimacy = (w.title.startsWith('Great') ? 55 : w.tie === 'hatti' || w.tie === 'babylon' ? 40 : 30) + (divine ? 15 : 0);
-    const trait = divine && chance(state, 0.3) ? 'frail' : randTrait(state);
+    const trait = divine && chance(state, w.royalBlood === 'full' ? 0.45 : 0.3) ? 'frail' : randTrait(state);
     state.sons.push({ id, kind: 'prince', sex: 'm', seed: seedNum(state), name, age: 0, motherId: w.id, legitimacy: w.id === 'pharaoh' ? 65 : legitimacy, loyalty: 80, role: 'Infant King’s Son', rel: 'child', trait, divine, edu: null, skill: null, spouse: null, alive: true });
     w.satisfaction = clamp(w.satisfaction + 15, 0, 100);
     w.influence = clamp(w.influence + 10, 0, 100);

@@ -98,7 +98,7 @@ test('every desk command can run from a fresh game without throwing', () => {
     'family.marry': [{ childId: 'meritamun', matchId: 'gods_wife' }],
     'family.designate': [{ sonId: 'khaemopet' }], 'family.ptah': [{ sonId: 'khaemopet' }],
     'family.favor': [{ wifeId: 'asmunikal' }], 'family.gift': [{ wifeId: 'henuttawy' }],
-    'family.elevate': [{ wifeId: 'asmunikal' }], 'family.wed_dowager': [{ wifeId: 'asmunikal' }], 'family.sideline': [{ wifeId: 'henuttawy' }],
+    'family.elevate': [{ wifeId: 'asmunikal' }], 'family.wed_dowager': [{ wifeId: 'asmunikal' }], 'family.wed_sibling': [{ childId: 'meritamun' }], 'family.sideline': [{ wifeId: 'henuttawy' }],
     'family.take_wife': [{ source: 'nome:delta' }, { source: 'foreign:hatti' }, { source: 'general:urhiya' }, { source: 'harem' }],
     'court.shortlist': Object.keys(OFFICES).map((office) => ({ office })),
     'court.appoint': [{ office: 'viceroy', candidateId: 'son:khaemopet' }], 'court.reward': [{ office: 'overseer' }],

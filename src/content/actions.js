@@ -582,6 +582,56 @@ export const ACTIONS = {
       api.log(`${nu.name} is crowned Great Royal Wife.${old ? ` ${old.name} is moved to lesser apartments.` : ''}`);
     },
   },
+  'family.wed_sibling': {
+    desk: 'family',
+    cost: () => 2,
+    label: (s, a) => `Marry ${s.pharaoh.sex === 'f' ? 'your brother' : 'your sister'} ${anyChild(s, a.childId)?.name}`,
+    available(s, a) {
+      const c = anyChild(s, a.childId);
+      if (!c || !c.alive || c.rel !== 'sibling') return 'Only a brother or sister of the reigning Pharaoh.';
+      if (c.sex === s.pharaoh.sex) return s.pharaoh.sex === 'f' ? 'Only a brother.' : 'Only a sister.';
+      if (!isAdult(c)) return 'Too young to marry (16).';
+      if (s.pharaoh.age < 14) return 'The king is too young to marry.';
+      if (c.spouse || c.abroad || c.office === 'gods_wife') return 'Already married, abroad or consecrated.';
+      if (s.pharaoh.sex === 'f' && kingWives(s).length >= 1) return 'Pharaoh already has a consort.';
+      if (kingWives(s).length >= 7) return 'The harem is full (7 wives at court).';
+      return true;
+    },
+    run(s, a, api) {
+      const c = anyChild(s, a.childId);
+      const female = s.pharaoh.sex === 'f';
+      const full = c.motherId && c.motherId === s.pharaoh.motherId;
+      const hasQueen = kingWives(s).some((w) => w.title.startsWith('Great'));
+      const fx = { wives: {}, sons: {}, approval: { priesthood: 3 }, maat: 3 };
+      for (const w of kingWives(s)) fx.wives[w.id] = sonsOf(s, w.id).length ? -10 : -5;
+      if (c.motherId && wife(s, c.motherId)) fx.wives[c.motherId] = 20;
+      // She (or he) leaves the list of siblings and joins the court.
+      c.alive = false;
+      c.becameQueen = true;
+      if (s.heirId === c.id) s.heirId = null;
+      for (const u of units(s)) if (u.commanderId === c.id) u.commanderId = null;
+      s.wives.push({
+        id: `sib-${c.id}`,
+        royalBlood: full ? 'full' : 'half',
+        kind: female ? 'consort' : hasQueen ? 'wife' : 'queen',
+        seed: c.seed,
+        name: c.name,
+        title: female ? 'King’s Husband (royal brother)' : hasQueen ? 'Secondary Wife (King’s Sister)' : 'Great Royal Wife (King’s Sister)',
+        origin: `${full ? 'Full' : 'Half-'}${female ? 'brother' : 'sister'} of Pharaoh, ${female ? 'son' : 'daughter'} of ${s.dynasty?.[s.dynasty.length - 1]?.name ?? 'the late king'}`,
+        tie: 'none',
+        age: c.age,
+        influence: female ? 40 : hasQueen ? 35 : 55,
+        ambition: c.trait === 'ambitious' ? 75 : 45,
+        satisfaction: 75,
+        plot: 0,
+        status: 'court',
+      });
+      api.fx(fx);
+      api.log(female
+        ? `Pharaoh takes her ${full ? '' : 'half-'}brother ${c.name} as consort. A rival claimant becomes the father of her heirs.`
+        : `Pharaoh marries his ${full ? '' : 'half-'}sister ${c.name}${hasQueen ? '' : ', who is crowned Great Royal Wife'}. The divine blood stays within the house of Horus: their children will be born with +15 Legitimacy, though ${full ? 'nearly half' : 'about three in ten'} may be frail. The other wives see their own sons’ chances shrink.`);
+    },
+  },
   'family.wed_dowager': {
     desk: 'family',
     cost: () => 2,
